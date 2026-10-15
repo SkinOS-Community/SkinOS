@@ -76,6 +76,8 @@ ditto --norsrc --noextattr "$SKINOS_SWIFT_BIN/Sparkle.framework" "$SKINOS_OUTPUT
 cp "$SKINOS_ROOT/apps/macos/.build/artifacts/sparkle/Sparkle/LICENSE" "$SKINOS_OUTPUT/Contents/Resources/licenses/Sparkle-LICENSE.txt"
 cp "$SKINOS_ROOT/LICENSE" "$SKINOS_OUTPUT/Contents/Resources/licenses/SkinOS-LICENSE.txt"
 cp "$SKINOS_ROOT/NOTICE" "$SKINOS_OUTPUT/Contents/Resources/licenses/SkinOS-NOTICE.txt"
+python3 "$SKINOS_ROOT/scripts/collect-third-party-licenses.py" \
+    --target aarch64-apple-darwin --output "$SKINOS_OUTPUT/Contents/Resources/licenses/Rust"
 python3 - "$SKINOS_NOTPROTON" "$SKINOS_OUTPUT/Contents/Resources/notproton" \
     "$SKINOS_ROOT/target/runtime-payload" "$SKINOS_OUTPUT/Contents/Resources/runtime-payload" \
     "$SKINOS_ROOT/crates/runtime-host/resources/runtime-payload-pin.json" <<'PYTHON'

@@ -88,8 +88,8 @@ never receive release-signing credentials.
 
 ## License and attribution
 
-SkinOS-authored code is **GPL-3.0-only**. See [LICENSE](LICENSE) and
-[NOTICE](NOTICE). Third-party components keep their own licenses, including
+SkinOS-authored code is **GPL-3.0-only**. See [LICENSE](LICENSE),
+[NOTICE](NOTICE) and [third-party notices](THIRD_PARTY.md). Third-party components keep their own licenses, including
 NotProton, Wine, steam-cm-protocol and Sparkle. Downloaded proprietary runtime
 components are not relicensed by this project.
 
