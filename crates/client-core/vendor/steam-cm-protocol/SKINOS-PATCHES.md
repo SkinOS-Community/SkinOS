@@ -9,5 +9,8 @@ SkinOs changes:
 - Public binary KV parser for depot metadata.
 - Depot key EMsg 5438/5439 (SteamTracking/Protobufs steam/enums_clientserver.proto).
 - Device display name SkinOs; macOS sends EOSType::MacOSUnknown (-102) instead of Windows 11. Enum source: SteamRE/SteamKit SteamKit2/SteamKit2/Base/Generated/SteamLanguage.cs.
+- Preserve numeric PICS launch-option IDs, sorting them numerically without replacing sparse keys with vector indices.
+- Preserve raw appinfo UFS save rules and root overrides in catalog/library metadata, normalizing text and binary scalar values to strings.
+- Expose `pics::parse_app_info_kv` for already-fetched appinfo; authenticated fetching and requested-AppID validation remain the caller's responsibility. Synthetic fixtures verify identical text/binary metadata and sparse option IDs.
 
 No bypass, credential import, or official Steam process launch is added.

@@ -22,6 +22,9 @@ as a game launcher.
   installation, preserving files needed by paused or unfinished transfers.
 - Native macOS games and Windows games through pinned NotProton integration
   with a separately installed CrossOver or CrossOver Preview.
+- Native launch plans use Steam option IDs and installed bundle/binary/script
+  metadata. Auto-Cloud save paths are resolved without per-game AppID rules;
+  unsupported paths and launch formats produce specific diagnostics.
 - Per-game launch arguments and compatibility settings, launch/stop controls,
   installation removal and redacted launch diagnostics.
 - Steam store and profile pages, friends and text chat, with invisible presence

@@ -32,6 +32,8 @@ pub struct AppCatalogInfo {
     pub installdir: Option<String>,
     /// Appinfo `config/launch` entries — used by the direct (no-Steam) launch path.
     pub launch: Vec<LaunchEntry>,
+    /// Raw appinfo `ufs` object, retaining numbered savefiles and root overrides.
+    pub cloud_config: Option<serde_json::Value>,
 }
 
 /// Library entries we surface: real games plus owned software/tools. DLC, soundtracks (music),
@@ -250,6 +252,7 @@ async fn resolve_app_infos(
                     app_type: None,
                     installdir: None,
                     launch: Vec::new(),
+                    cloud_config: None,
                 },
             )
         })
@@ -455,6 +458,12 @@ fn hex_prefix(buffer: &[u8], limit: usize) -> String {
 
 fn parse_binary_app_info(appid: u32, buffer: &[u8]) -> Option<AppCatalogInfo> {
     let root = kv::parse_binary_kv(buffer)?;
+    parse_app_info_kv(appid, &root)
+}
+
+/// Decode already-fetched appinfo with the same launch/UFS interpretation as
+/// the library parser. Callers are responsible for the authenticated fetch.
+pub fn parse_app_info_kv(appid: u32, root: &KVValue) -> Option<AppCatalogInfo> {
     let common = root
         .get("appinfo")
         .and_then(|appinfo| appinfo.get("common"))
@@ -488,6 +497,12 @@ fn parse_binary_app_info(appid: u32, buffer: &[u8]) -> Option<AppCatalogInfo> {
         .and_then(|config| config.get("launch"))
         .map(launch_entries_from_kv)
         .unwrap_or_default();
+    let cloud_config = root
+        .get("appinfo")
+        .and_then(|appinfo| appinfo.get("ufs"))
+        .or_else(|| root.get("ufs"))
+        .filter(|ufs| ufs.as_nested().is_some())
+        .map(kv_json);
 
     Some(AppCatalogInfo {
         appid,
@@ -496,6 +511,7 @@ fn parse_binary_app_info(appid: u32, buffer: &[u8]) -> Option<AppCatalogInfo> {
         app_type,
         installdir,
         launch,
+        cloud_config,
     })
 }
 
@@ -504,9 +520,10 @@ fn launch_entries_from_kv(launch: &KVValue) -> Vec<LaunchEntry> {
     let Some(children) = launch.as_nested() else {
         return Vec::new();
     };
-    children
+    let mut entries: Vec<_> = children
         .iter()
-        .filter_map(|(_, entry)| {
+        .filter_map(|(key, entry)| {
+            let id = key.parse::<u32>().ok()?;
             let executable = entry
                 .get("executable")
                 .and_then(|value| value.as_str())
@@ -520,6 +537,7 @@ fn launch_entries_from_kv(launch: &KVValue) -> Vec<LaunchEntry> {
                     .map(str::to_owned)
             };
             Some(LaunchEntry {
+                id: Some(id),
                 executable,
                 arguments: str_field(Some(entry), "arguments"),
                 workingdir: str_field(Some(entry), "workingdir"),
@@ -528,6 +546,36 @@ fn launch_entries_from_kv(launch: &KVValue) -> Vec<LaunchEntry> {
                 osarch: str_field(cfg, "osarch"),
                 betakey: str_field(cfg, "betakey"),
             })
+        })
+        .collect();
+    entries.sort_by_key(|entry| entry.id);
+    entries
+}
+
+// UFS originates in KeyValues; normalize typed binary scalars to the string
+// representation of text appinfo so consumers do not depend on the transport.
+fn kv_json(value: &KVValue) -> serde_json::Value {
+    match value {
+        KVValue::Nested(children) => children
+            .iter()
+            .map(|(key, value)| (key.clone(), kv_json(value)))
+            .collect(),
+        KVValue::Str(value) => serde_json::Value::String(value.clone()),
+        KVValue::Int(value) => serde_json::Value::String(value.to_string()),
+        KVValue::Uint64(value) => serde_json::Value::String(value.to_string()),
+        KVValue::Other => serde_json::Value::Null,
+    }
+}
+
+fn vdf_json(node: &VdfNode) -> serde_json::Value {
+    node.values
+        .iter()
+        .map(|(key, value)| {
+            let value = match value {
+                VdfValue::Node(node) => vdf_json(node),
+                VdfValue::Str(value) => serde_json::Value::String(value.clone()),
+            };
+            (key.clone(), value)
         })
         .collect()
 }
@@ -564,6 +612,11 @@ fn parse_text_app_info(appid: u32, buffer: &[u8]) -> Option<AppCatalogInfo> {
         .and_then(|config| config.get_node("launch"))
         .map(launch_entries_from_vdf)
         .unwrap_or_default();
+    let cloud_config = root
+        .get_node("appinfo")
+        .and_then(|appinfo| appinfo.get_node("ufs"))
+        .or_else(|| root.get_node("ufs"))
+        .map(vdf_json);
 
     Some(AppCatalogInfo {
         appid,
@@ -572,16 +625,18 @@ fn parse_text_app_info(appid: u32, buffer: &[u8]) -> Option<AppCatalogInfo> {
         app_type,
         installdir,
         launch,
+        cloud_config,
     })
 }
 
 /// Collect `config/launch` entries from a text-VDF `launch` node (numbered child nodes).
 fn launch_entries_from_vdf(launch: &VdfNode) -> Vec<LaunchEntry> {
-    launch
+    let mut entries: Vec<_> = launch
         .values
         .iter()
-        .filter_map(|(_, value)| match value {
+        .filter_map(|(key, value)| match value {
             VdfValue::Node(entry) => {
+                let id = key.parse::<u32>().ok()?;
                 let executable = entry
                     .get_str("executable")
                     .filter(|value| !value.is_empty())?
@@ -593,6 +648,7 @@ fn launch_entries_from_vdf(launch: &VdfNode) -> Vec<LaunchEntry> {
                         .map(str::to_owned)
                 };
                 Some(LaunchEntry {
+                    id: Some(id),
                     executable,
                     arguments: str_field(Some(entry), "arguments"),
                     workingdir: str_field(Some(entry), "workingdir"),
@@ -604,7 +660,9 @@ fn launch_entries_from_vdf(launch: &VdfNode) -> Vec<LaunchEntry> {
             }
             VdfValue::Str(_) => None,
         })
-        .collect()
+        .collect();
+    entries.sort_by_key(|entry| entry.id);
+    entries
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -771,6 +829,135 @@ fn parse_vdf_node(lexer: &mut VdfLexer<'_>, stop_on_close: bool) -> Option<VdfNo
 mod tests {
     use super::*;
 
+    #[test]
+    fn launch_entries_keep_sparse_ids_in_numeric_order() {
+        let app = parse_app_info(
+            42,
+            br#"
+            "appinfo" {
+                "common" { "name" "Generic game" }
+                "config" { "launch" {
+                    "19" { "executable" "second.app" }
+                    "2" { "executable" "first.app" }
+                    "description" { "executable" "not-an-option.app" }
+                    "7" { "description" "No executable" }
+                } }
+            }
+        "#,
+        )
+        .unwrap();
+        assert_eq!(
+            app.launch
+                .iter()
+                .map(|entry| entry.executable.as_str())
+                .collect::<Vec<_>>(),
+            ["first.app", "second.app"]
+        );
+        assert_eq!(
+            app.launch.iter().map(|entry| entry.id).collect::<Vec<_>>(),
+            [Some(2), Some(19)]
+        );
+    }
+
+    fn binary_fixture(node: &KVValue) -> Vec<u8> {
+        fn append(out: &mut Vec<u8>, key: &str, value: &KVValue) {
+            out.push(match value {
+                KVValue::Nested(_) => 0,
+                KVValue::Str(_) => 1,
+                KVValue::Int(_) => 2,
+                KVValue::Uint64(_) => 7,
+                KVValue::Other => panic!("unsupported fixture"),
+            });
+            out.extend_from_slice(key.as_bytes());
+            out.push(0);
+            match value {
+                KVValue::Nested(children) => {
+                    for (key, value) in children {
+                        append(out, key, value);
+                    }
+                    out.push(8);
+                }
+                KVValue::Str(value) => {
+                    out.extend_from_slice(value.as_bytes());
+                    out.push(0);
+                }
+                KVValue::Int(value) => out.extend_from_slice(&value.to_le_bytes()),
+                KVValue::Uint64(value) => out.extend_from_slice(&value.to_le_bytes()),
+                KVValue::Other => unreachable!(),
+            }
+        }
+        let mut bytes = Vec::new();
+        append(&mut bytes, "appinfo", node);
+        bytes
+    }
+
+    #[test]
+    fn text_and_binary_preserve_same_cloud_metadata_and_sparse_launch_ids() {
+        let text = br#""appinfo" {
+            "common" { "name" "Game" }
+            "config" { "launch" {
+                "19" { "executable" "other.app" }
+                "2" { "executable" "Game.app" "config" { "oslist" "macos" } }
+            } }
+            "ufs" {
+                "quota" "1000" "maxnumfiles" "20"
+                "savefiles" { "7" {
+                    "root" "MacAppSupport" "path" "Studio/Game/{64BitSteamID}"
+                    "pattern" "*.sav" "recursive" "1" "platforms" { "1" "MacOS" }
+                } }
+                "rootoverrides" { "5" {
+                    "root" "WinAppDataRoaming" "os" "MacOS" "oscompare" "="
+                    "useinstead" "MacAppSupport" "addpath" "Studio"
+                } }
+            }
+        }"#;
+        let vdf = parse_vdf(std::str::from_utf8(text).unwrap()).unwrap();
+        fn as_kv(node: &VdfNode) -> KVValue {
+            KVValue::Nested(
+                node.values
+                    .iter()
+                    .map(|(key, value)| {
+                        let value = match value {
+                            VdfValue::Node(node) => as_kv(node),
+                            VdfValue::Str(value) if key == "quota" => {
+                                KVValue::Uint64(value.parse().unwrap())
+                            }
+                            VdfValue::Str(value) if key == "maxnumfiles" || key == "recursive" => {
+                                KVValue::Int(value.parse().unwrap())
+                            }
+                            VdfValue::Str(value) => KVValue::Str(value.clone()),
+                        };
+                        (key.clone(), value)
+                    })
+                    .collect(),
+            )
+        }
+        let binary = binary_fixture(&as_kv(vdf.get_node("appinfo").unwrap()));
+        let text_app = parse_app_info(42, text).unwrap();
+        let binary_app = parse_app_info(42, &binary).unwrap();
+        let fetched_app = parse_app_info_kv(42, &kv::parse_binary_kv(&binary).unwrap()).unwrap();
+        assert_eq!(text_app, binary_app);
+        assert_eq!(binary_app, fetched_app);
+        assert_eq!(
+            binary_app
+                .launch
+                .iter()
+                .map(|entry| entry.id)
+                .collect::<Vec<_>>(),
+            [Some(2), Some(19)]
+        );
+        let cloud = binary_app.cloud_config.unwrap();
+        assert_eq!(cloud["quota"], "1000");
+        assert_eq!(cloud["maxnumfiles"], "20");
+        assert_eq!(cloud["savefiles"]["7"]["recursive"], "1");
+        assert_eq!(
+            cloud["savefiles"]["7"]["path"],
+            "Studio/Game/{64BitSteamID}"
+        );
+        assert_eq!(cloud["savefiles"]["7"]["platforms"]["1"], "MacOS");
+        assert_eq!(cloud["rootoverrides"]["5"]["useinstead"], "MacAppSupport");
+    }
+
     fn catalog_app(appid: u32, name: &str, app_type: Option<&str>) -> AppCatalogInfo {
         AppCatalogInfo {
             appid,
@@ -779,6 +966,7 @@ mod tests {
             app_type: app_type.map(str::to_owned),
             installdir: None,
             launch: Vec::new(),
+            cloud_config: None,
         }
     }
 

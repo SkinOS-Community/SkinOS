@@ -76,6 +76,8 @@ pub struct Persona {
 /// Used by the direct (no-Steam) launch path to resolve the executable without the Steam client.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LaunchEntry {
+    /// Numeric child key in `config/launch`; this is not the entry's vector index.
+    pub id: Option<u32>,
     /// Executable path, relative to the game's install directory (e.g. `bin/game.exe`).
     pub executable: String,
     /// Launch arguments, if any.
@@ -107,6 +109,8 @@ pub struct ProtocolGame {
     pub installdir: Option<String>,
     /// Appinfo `config/launch` entries (how Steam would launch it). Empty when unresolved.
     pub launch: Vec<LaunchEntry>,
+    /// Raw appinfo `ufs` object. Scalar leaves use strings in both PICS encodings.
+    pub cloud_config: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone)]

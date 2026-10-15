@@ -58,10 +58,17 @@ pub struct Game {
     pub installed_platform: Option<String>,
     pub header_url: String,
     pub launch: Vec<LaunchEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_config: Option<Value>,
+    /// False for pre-UFS caches, where None does not mean verified absence.
+    #[serde(default)]
+    pub launch_metadata_known: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LaunchEntry {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<u32>,
     pub executable: String,
     pub arguments: Option<String>,
     pub workingdir: Option<String>,
@@ -69,6 +76,21 @@ pub struct LaunchEntry {
     pub oslist: Option<String>,
     pub osarch: Option<String>,
     pub betakey: Option<String>,
+}
+
+impl From<steam_cm_protocol::LaunchEntry> for LaunchEntry {
+    fn from(entry: steam_cm_protocol::LaunchEntry) -> Self {
+        Self {
+            id: entry.id,
+            executable: entry.executable,
+            arguments: entry.arguments,
+            workingdir: entry.workingdir,
+            launch_type: entry.launch_type,
+            oslist: entry.oslist,
+            osarch: entry.osarch,
+            betakey: entry.betakey,
+        }
+    }
 }
 
 impl From<steam_cm_protocol::ProtocolGame> for Game {
@@ -115,19 +137,9 @@ impl From<steam_cm_protocol::ProtocolGame> for Game {
                 "https://cdn.akamai.steamstatic.com/steam/apps/{}/header.jpg",
                 game.appid
             ),
-            launch: game
-                .launch
-                .into_iter()
-                .map(|entry| LaunchEntry {
-                    executable: entry.executable,
-                    arguments: entry.arguments,
-                    workingdir: entry.workingdir,
-                    launch_type: entry.launch_type,
-                    oslist: entry.oslist,
-                    osarch: entry.osarch,
-                    betakey: entry.betakey,
-                })
-                .collect(),
+            launch: game.launch.into_iter().map(LaunchEntry::from).collect(),
+            cloud_config: game.cloud_config,
+            launch_metadata_known: true,
         }
     }
 }
@@ -135,6 +147,48 @@ impl From<steam_cm_protocol::ProtocolGame> for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_cached_game_omits_launch_ids_and_cloud_config() {
+        let game: Game = serde_json::from_value(serde_json::json!({
+            "appid": 42, "name": "Legacy", "playtime_minutes": 0, "last_played": 0,
+            "app_type": "game", "installdir": "Legacy", "installed_dir": null,
+            "macos_supported": true, "header_url": "",
+            "launch": [{"executable": "Legacy.app"}]
+        }))
+        .unwrap();
+        assert!(game.cloud_config.is_none());
+        assert!(!game.launch_metadata_known);
+        assert!(game.launch[0].id.is_none());
+    }
+
+    #[test]
+    fn game_conversion_preserves_cloud_and_original_launch_option_id() {
+        let ufs = serde_json::json!({"savefiles": {"8": {
+            "root": "MacAppSupport", "path": "Publisher/Game", "pattern": "*.sav"
+        }}});
+        let protocol = steam_cm_protocol::ProtocolGame {
+            appid: 42,
+            name: "Game".into(),
+            playtime_forever: 0,
+            rtime_last_played: 0,
+            img_icon_url: None,
+            app_type: None,
+            installdir: None,
+            cloud_config: Some(ufs.clone()),
+            launch: vec![steam_cm_protocol::LaunchEntry {
+                id: Some(19),
+                executable: "Game.app".into(),
+                ..Default::default()
+            }],
+        };
+        let serialized = serde_json::to_value(Game::from(protocol)).unwrap();
+        assert_eq!(serialized["cloud_config"], ufs);
+        assert_eq!(serialized["launch_metadata_known"], true);
+        let restored: Game = serde_json::from_value(serialized.clone()).unwrap();
+        assert!(restored.launch_metadata_known);
+        assert_eq!(serialized["launch"][0]["id"], 19);
+    }
     #[test]
     fn request_password_is_never_in_response_schema() {
         let req: Request = serde_json::from_str(
@@ -154,6 +208,7 @@ mod tests {
             img_icon_url: None,
             app_type: None,
             installdir: None,
+            cloud_config: None,
             launch: vec![steam_cm_protocol::LaunchEntry {
                 oslist: Some("windows, macos".into()),
                 ..Default::default()

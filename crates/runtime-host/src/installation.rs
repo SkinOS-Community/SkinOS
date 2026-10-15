@@ -2,35 +2,20 @@ use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Verified from Brotato's shipped Godot project config and Steam UFS metadata.
-/// Never derive a permission grant from arbitrary title text or allow all HOME.
-pub fn native_save_root(request: &Value) -> Result<Option<PathBuf>, String> {
-    if request["command"] != "launch" || !request["compatibility"].is_null() {
-        return Ok(None);
+mod save_roots;
+pub use save_roots::native_save_roots;
+
+/// Create only paths accepted by the read-only resolver, then re-resolve them
+/// before the caller constructs its normal sandbox permissions.
+pub fn prepare_native_save_roots(request: &Value) -> Result<Vec<PathBuf>, String> {
+    let roots = native_save_roots(request)?;
+    for root in &roots {
+        save_roots::create_checked_directory(root)?;
     }
-    if request["appid"] != 1942280 || request["name"] != "Brotato" {
-        return Err("This game's native save-directory policy has not been verified yet".into());
+    if native_save_roots(request)? != roots {
+        return Err("Native save paths changed while preparing the launch".into());
     }
-    let executable = Path::new(request["executable"].as_str().ok_or("Executable missing")?);
-    if executable.file_name() != Some(std::ffi::OsStr::new("Brotato.app")) {
-        return Err("Save policy does not match the native bundle".into());
-    }
-    let base = PathBuf::from(std::env::var_os("HOME").ok_or("User home unavailable")?)
-        .join("Library/Application Support");
-    let saves = base.join("Brotato");
-    fs::create_dir_all(&saves).map_err(|e| e.to_string())?;
-    let canonical = saves.canonicalize().map_err(|e| e.to_string())?;
-    if canonical
-        != base
-            .canonicalize()
-            .map_err(|e| e.to_string())?
-            .join("Brotato")
-    {
-        return Err(
-            "Native save root is unexpectedly redirected; no broad access was granted".into(),
-        );
-    }
-    Ok(Some(canonical))
+    Ok(roots)
 }
 
 /// Register only a completed, caller-verified SkinOs installation in a private
@@ -108,4 +93,16 @@ pub fn stage(request: &Value, state: &Path) -> Result<Option<PathBuf>, String> {
     )
     .map_err(|e| e.to_string())?;
     Ok(Some(install))
+}
+
+#[cfg(test)]
+mod save_policy_regression_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn unknown_native_game_without_cloud_metadata_has_no_extra_save_roots() {
+        let request = json!({"command": "launch", "appid": 424242, "name": "Fixture"});
+        assert!(native_save_roots(&request).unwrap().is_empty());
+    }
 }
