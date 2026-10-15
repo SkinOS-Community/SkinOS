@@ -137,6 +137,9 @@ struct RootView: View {
         .sheet(item: $model.gameForLog) { game in
             LaunchLogView(model: model, game: game)
         }
+        .sheet(item: $model.installationRequest) { request in
+            InstallPlatformView(model: model, request: request)
+        }
     }
 }
 
@@ -348,7 +351,7 @@ struct GameCard: View {
                     .overlay(RoundedRectangle(cornerRadius: 11).stroke(selected ? Theme.accent : .white.opacity(hovered ? 0.18 : 0.04), lineWidth: selected ? 2 : 1))
                     .overlay(alignment: .bottomLeading) {
                         if game.isInstalled {
-                            Label(game.updateAvailable ? "Есть обновление" : "Установлена", systemImage: game.updateAvailable ? "arrow.down.circle.fill" : "checkmark.circle.fill")
+                            Label(game.updateAvailable ? "Есть обновление" : game.installedVersion.map { "Установлена · \($0.title)" } ?? "Установлена", systemImage: game.updateAvailable ? "arrow.down.circle.fill" : "checkmark.circle.fill")
                                 .font(.system(size: 8, weight: .semibold))
                                 .padding(.horizontal, 7).padding(.vertical, 5).background(.black.opacity(0.65), in: Capsule()).padding(8)
                         }
@@ -358,10 +361,12 @@ struct GameCard: View {
                     HStack {
                         Text(game.playtime).font(.system(size: 10)).foregroundStyle(Theme.muted)
                         Spacer()
-                        if game.supportsMacOS { Image(systemName: "apple.logo").font(.system(size: 10)).foregroundStyle(Theme.muted) }
+                        if let platform = game.installedVersion {
+                            Image(systemName: platform.symbol).font(.system(size: 10)).foregroundStyle(Theme.muted).help("Установлена версия \(platform.title)")
+                        } else if game.supportsMacOS { Image(systemName: "apple.logo").font(.system(size: 10)).foregroundStyle(Theme.muted) }
                     }
                     if let download, download.isActive {
-                        Text(download.phaseDescription).font(.system(size: 9, weight: .medium)).foregroundStyle(download.phase == "paused" ? Theme.muted : Theme.accent)
+                        Text(download.phaseDescription + (download.platform.map { " · \($0.title)" } ?? "")).font(.system(size: 9, weight: .medium)).foregroundStyle(download.phase == "paused" ? Theme.muted : Theme.accent)
                         if let progress = download.displayProgress {
                             ProgressView(value: progress).tint(Theme.accent).controlSize(.small)
                         }
@@ -478,6 +483,7 @@ struct GameDetailView: View {
     }
 
     private var platformLabel: String {
+        if game.installedVersion == .macOS { return "Установлена версия для macOS" }
         if game.installedPlatform == "windows" { return "Windows · NotProton" }
         if game.supportsMacOS { return "Есть версия для macOS" }
         return game.supportsWindows ? "Windows · NotProton" : "Нет версии для Mac или Windows"

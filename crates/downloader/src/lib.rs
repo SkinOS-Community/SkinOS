@@ -1,5 +1,7 @@
 //! SteamPipe downloads over an existing authenticated Steam CM connection.
+mod cache_cleanup;
 mod content;
+pub use cache_cleanup::{CacheCleanup, cleanup_completed_download_cache};
 mod control;
 pub use control::{InstallControl, InstallInterrupted};
 pub mod library;
@@ -41,7 +43,7 @@ pub enum InstallPlatform {
     Windows,
 }
 impl InstallPlatform {
-    fn os(self) -> &'static str {
+    pub fn os(self) -> &'static str {
         match self {
             Self::Macos => "macos",
             Self::Windows => "windows",
@@ -74,6 +76,9 @@ pub struct InstalledGame {
     pub steamid: String,
     pub install_dir: PathBuf,
     pub build_id: String,
+    /// Absent on imports/older installations; callers may infer from files.
+    #[serde(default)]
+    pub platform: Option<InstallPlatform>,
     pub depots: Vec<InstalledDepot>,
 }
 
@@ -300,8 +305,16 @@ pub async fn install(
                 && record.install_dir.canonicalize()? == destination.canonicalize()?,
             "Destination belongs to another game"
         );
+        ensure!(
+            record
+                .platform
+                .is_none_or(|installed| installed == request.platform),
+            "Установлена другая версия игры. Сначала удалите её с устройства"
+        );
     }
 
+    // Keep the stable cache name so upgrades resume existing partial content.
+    // Every reused chunk is verified against the selected platform's manifest.
     let staging = parent.join(format!(".skinos-{}-{}.partial", request.appid, build_id));
     ensure!(
         !staging.is_symlink(),
@@ -427,6 +440,7 @@ pub async fn install(
         steamid: request.steamid,
         install_dir: destination.clone(),
         build_id,
+        platform: Some(request.platform),
         depots: selections
             .iter()
             .map(|d| InstalledDepot {

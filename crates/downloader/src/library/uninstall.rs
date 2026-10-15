@@ -596,6 +596,7 @@ mod tests {
         fs::create_dir_all(&directory).unwrap();
         let record = crate::InstalledGame {
             appid,
+            platform: None,
             steamid: "1".into(),
             install_dir: directory.canonicalize().unwrap(),
             build_id: "1".into(),

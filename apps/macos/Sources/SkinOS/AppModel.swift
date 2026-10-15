@@ -71,6 +71,7 @@ final class AppModel: ObservableObject {
     @Published var downloadQueueError: String?
     @Published var pendingDownloadControls: Set<Int> = []
     @Published var pendingEnqueueGames: Set<Int> = []
+    @Published var installationRequest: GameInstallationRequest?
     @Published var downloadLimitPending = false
     var downloadQueueRevision: Int64 = -1
     var downloadControlRequests: [String: Int] = [:]
@@ -373,24 +374,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func install(_ game: SteamGame, update: Bool = false) {
-        guard account != nil else { isShowingLogin = true; return }
-        guard coreReady else { errorMessage = "Нет соединения с SkinOS Core. Перезапустите приложение."; return }
-        guard !pendingEnqueueGames.contains(game.id), !uninstallingGames.contains(game.id) else { return }
-        errorMessage = nil
-        pendingEnqueueGames.insert(game.id)
-        if !downloadQueueReady {
-            downloads[game.id] = GameDownload(id: game.id, phase: "queued", isUpdate: update)
-            if !downloadOrder.contains(game.id) { downloadOrder.append(game.id) }
-        }
-        if let id = send(update ? "update_game" : "install_game", payload: ["appid": game.id]) {
-            gameRequests[id] = game.id
-        } else {
-            pendingEnqueueGames.remove(game.id)
-            if !downloadQueueReady { downloads[game.id]?.failed = true }
-        }
-    }
-
     func launch(_ game: SteamGame) {
         guard !launchIsActive(game) else { return }
         guard !steamInputBusy else { errorMessage = "Дождитесь завершения проверки Steam Input."; return }
@@ -618,6 +601,7 @@ final class AppModel: ObservableObject {
             if !downloadQueueReady { downloads[appID] = download }
             if let index = games.firstIndex(where: { $0.id == appID }) {
                 games[index].installedDirectory = payload["install_dir"] as? String ?? games[index].installedDirectory
+                games[index].installedPlatform = payload["platform"] as? String ?? download.platform?.rawValue ?? games[index].installedPlatform
                 games[index].updateAvailable = false
             }
         case "launch_status":

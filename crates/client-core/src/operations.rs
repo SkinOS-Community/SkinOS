@@ -72,7 +72,10 @@ impl MvpDownloader {
     }
 }
 impl crate::download_queue::DownloadExecutor for MvpDownloader {
-    fn validate(&self, job: &crate::download_queue::DownloadJob) -> Result<()> {
+    fn validate(
+        &self,
+        job: &crate::download_queue::DownloadJob,
+    ) -> Result<skinos_downloader::InstallPlatform> {
         ensure!(
             job.steamid == self.context.steamid,
             "Download account changed"
@@ -88,9 +91,9 @@ impl crate::download_queue::DownloadExecutor for MvpDownloader {
         if job.is_update {
             ensure!(game.installed_dir.is_some(), "Сначала установите игру");
         }
-        platform(&game, &settings::game(job.appid)?)?;
+        let platform = download_platform(&game, job.platform, job.is_update)?;
         self.destination(job.appid)?;
-        Ok(())
+        Ok(platform)
     }
     fn can_start(&self, job: &crate::download_queue::DownloadJob) -> bool {
         if self
@@ -115,6 +118,60 @@ impl crate::download_queue::DownloadExecutor for MvpDownloader {
             .unwrap_or(path)
             .to_string_lossy()
             .into_owned())
+    }
+    fn cleanup_completed(
+        &self,
+        job: crate::download_queue::DownloadJob,
+        events: mpsc::UnboundedSender<Event>,
+    ) -> crate::download_queue::DownloadFuture {
+        let account = self.context.steamid.clone();
+        let apps = self.apps.clone();
+        let destinations = self.destinations.clone();
+        Box::pin(async move {
+            ensure!(job.steamid == account, "Download account changed");
+            let appid = job.appid;
+            let outcome = tokio::task::spawn_blocking(
+                move || -> Result<Option<skinos_downloader::CacheCleanup>> {
+                    if !apps
+                        .lock()
+                        .map_err(|_| anyhow::anyhow!("Operation lock unavailable"))?
+                        .insert(appid)
+                    {
+                        return Ok(None);
+                    }
+                    let _app = AppOperation { appid, apps };
+                    let config = settings::load()?;
+                    let installed =
+                        skinos_downloader::library::read_appmanifest(&config.steamapps_dir, appid)?;
+                    let _destination =
+                        DestinationOperation::acquire(destinations, installed.install_dir)?;
+                    if !crate::download_queue::completed_cache_cleanup_allowed(
+                        &session::data_dir()?,
+                        appid,
+                    )? {
+                        return Ok(None);
+                    }
+                    skinos_downloader::cleanup_completed_download_cache(
+                        &config.steamapps_dir,
+                        appid,
+                    )
+                    .map(Some)
+                },
+            )
+            .await??;
+            let payload = match outcome {
+                Some(outcome) => serde_json::to_value(outcome)?,
+                None => {
+                    json!({"appid":appid,"skipped":true,"removed_directories":0,"removed_bytes":0})
+                }
+            };
+            let _ = events.send(Event::new(
+                job.request_id.as_deref(),
+                "download_cache_cleaned",
+                payload,
+            ));
+            Ok(())
+        })
     }
     fn run(
         &self,
@@ -152,7 +209,13 @@ impl crate::download_queue::DownloadExecutor for MvpDownloader {
                 ensure!(game.installed_dir.is_some(), "Сначала установите игру");
             }
             let config = settings::load()?;
-            let platform = platform(&game, &settings::game(job.appid)?)?;
+            let platform = job
+                .platform
+                .context("Выберите версию игры перед загрузкой")?;
+            ensure!(
+                download_platform(&game, Some(platform), job.is_update)? == platform,
+                "Версия установленной игры изменилась; обновите очередь"
+            );
             let destination = skinos_downloader::library::installation_directory(
                 &config.steamapps_dir,
                 job.appid,
@@ -182,7 +245,7 @@ impl crate::download_queue::DownloadExecutor for MvpDownloader {
                 control,
             )
             .await?;
-            let _=events.send(Event::new(job.request_id.as_deref(),"install_complete",json!({"appid":job.appid,"install_dir":record.install_dir,"build_id":record.build_id})));
+            let _=events.send(Event::new(job.request_id.as_deref(),"install_complete",json!({"appid":job.appid,"install_dir":record.install_dir,"build_id":record.build_id,"platform":record.platform})));
             if let Some(game) = context
                 .games
                 .iter_mut()
@@ -287,36 +350,54 @@ fn is_default_public(entry: &crate::model::LaunchEntry) -> bool {
         .is_none_or(|v| v.is_empty() || v == "default")
         && entry.betakey.as_deref().is_none_or(str::is_empty)
 }
+fn is_macho_file(path: &Path) -> bool {
+    use std::io::Read;
+    let mut magic = [0u8; 4];
+    if !std::fs::File::open(path).is_ok_and(|mut file| file.read_exact(&mut magic).is_ok()) {
+        return false;
+    }
+    matches!(
+        u32::from_be_bytes(magic),
+        0xfeedface
+            | 0xcefaedfe
+            | 0xfeedfacf
+            | 0xcffaedfe
+            | 0xcafebabe
+            | 0xbebafeca
+            | 0xcafebabf
+            | 0xbfbafeca
+    )
+}
+
 fn installed_platform(game: &Game, dir: &Path) -> Option<String> {
-    // Ignore tools/editors, beta branches and Linux launch entries. A native app
-    // bundle is unambiguous even when PICS lists several OSes on one entry.
-    let available = game
-        .launch
+    // Common depots may include macOS wrapper scripts in a Windows install.
+    // Prefer actual native app/binary evidence, then a Windows executable, and
+    // use a wrapper only when neither platform has a more specific artifact.
+    game.launch
         .iter()
         .filter(|e| is_default_public(e))
         .filter_map(|e| {
             let path = relative_game_path(dir, &e.executable).ok()?;
             if is_macos(e) && path.extension().is_some_and(|v| v == "app") && path.is_dir() {
-                Some("macos")
+                Some((3, "macos"))
+            } else if !path.is_file() {
+                None
+            } else if is_macos(e) && is_macho_file(&path) {
+                Some((3, "macos"))
             } else if is_windows(e)
-                && path.is_file()
                 && path
                     .extension()
                     .is_some_and(|v| v.eq_ignore_ascii_case("exe"))
             {
-                Some("windows")
-            } else if is_macos(e) && path.is_file() {
-                Some("macos")
+                Some((2, "windows"))
+            } else if is_macos(e) {
+                Some((1, "macos"))
             } else {
                 None
             }
         })
-        .collect::<Vec<_>>();
-    if available.contains(&"macos") {
-        Some("macos".into())
-    } else {
-        available.first().map(|v| (*v).into())
-    }
+        .max_by_key(|(specificity, _)| *specificity)
+        .map(|(_, platform)| platform.to_owned())
 }
 
 fn launch_entry<'a>(
@@ -389,9 +470,11 @@ pub fn annotate_installed(games: &mut [Game]) {
             .as_ref()
             .map(|r| r.install_dir.to_string_lossy().into_owned());
         game.installed_build_id = record.as_ref().map(|r| r.build_id.clone());
-        game.installed_platform = record
-            .as_ref()
-            .and_then(|r| installed_platform(game, &r.install_dir));
+        game.installed_platform = record.as_ref().and_then(|r| {
+            r.platform
+                .map(|p| p.os().to_owned())
+                .or_else(|| installed_platform(game, &r.install_dir))
+        });
         game.update_available = game
             .available_build_id
             .as_ref()
@@ -400,11 +483,59 @@ pub fn annotate_installed(games: &mut [Game]) {
     }
 }
 
+/// The download version is an installation choice, independent of launcher
+/// preferences. An installed variant cannot be converted by an update or retry.
+fn download_platform(
+    game: &Game,
+    requested: Option<skinos_downloader::InstallPlatform>,
+    is_update: bool,
+) -> Result<skinos_downloader::InstallPlatform> {
+    use skinos_downloader::InstallPlatform;
+    let installed = match game.installed_platform.as_deref() {
+        Some("macos") => Some(InstallPlatform::Macos),
+        Some("windows") => Some(InstallPlatform::Windows),
+        Some(_) => bail!("Неизвестная версия установленной игры"),
+        None => None,
+    };
+    let selected = if game.installed_dir.is_some() || is_update {
+        let installed = installed.context(
+            "Не удалось определить версию установленной игры. Обновите библиотеку перед загрузкой",
+        )?;
+        ensure!(
+            requested.is_none_or(|requested| requested == installed),
+            "Установлена другая версия игры. Сначала удалите её с устройства"
+        );
+        installed
+    } else {
+        requested.unwrap_or(if game.macos_supported {
+            InstallPlatform::Macos
+        } else {
+            InstallPlatform::Windows
+        })
+    };
+    ensure!(
+        match selected {
+            InstallPlatform::Macos => game.macos_supported,
+            InstallPlatform::Windows => game.windows_supported,
+        },
+        "У игры нет версии для выбранной платформы"
+    );
+    Ok(selected)
+}
+
 fn platform(
     game: &Game,
     settings: &skinos_compat::GameSettings,
 ) -> Result<skinos_downloader::InstallPlatform> {
     use skinos_downloader::InstallPlatform;
+    // There is one installed variant per app. A stale launch preference must
+    // never reinterpret native files as Windows content (or vice versa).
+    match game.installed_platform.as_deref() {
+        Some("macos") => return Ok(InstallPlatform::Macos),
+        Some("windows") => return Ok(InstallPlatform::Windows),
+        Some(_) => bail!("Неизвестная версия установленной игры"),
+        None => {}
+    }
     match settings.compatibility.as_str() {
         "notproton" => {
             ensure!(game.windows_supported, "У игры нет Windows-варианта");
@@ -414,9 +545,7 @@ fn platform(
             ensure!(game.macos_supported, "У игры нет macOS-варианта");
             Ok(InstallPlatform::Macos)
         }
-        "auto"
-            if game.installed_platform.as_deref() == Some("windows") || !game.macos_supported =>
-        {
+        "auto" if !game.macos_supported => {
             ensure!(game.windows_supported, "Нет совместимого варианта запуска");
             Ok(InstallPlatform::Windows)
         }
@@ -463,11 +592,10 @@ impl OperationAdapter for MvpOperations {
                     g.installed_dir.is_some() && only.is_none_or(|id| id == u64::from(g.appid))
                 }) {
                     let installed = installed(game).context("Установленная игра недоступна")?;
-                    let options = settings::game(game.appid)?;
                     let build = skinos_downloader::latest_build(
                         &context.connection,
                         game.appid,
-                        platform(game, &options)?,
+                        download_platform(game, None, true)?,
                     )
                     .await?;
                     updates.push(json!({"appid":game.appid,"installed_build_id":installed.build_id,"available_build_id":build,"update_available":installed.build_id!=build}));
@@ -957,6 +1085,32 @@ mod tests {
         );
     }
     #[test]
+    fn legacy_common_mac_wrapper_does_not_override_actual_windows_install() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("game.sh"), b"#!/bin/sh\nexec game_osx\n").unwrap();
+        std::fs::write(dir.path().join("game.exe"), b"MZ").unwrap();
+        let g = game(vec![
+            entry("game.sh", "macos"),
+            entry("game.exe", "windows"),
+            entry("game_osx", "macos"),
+            entry("Game.app", "macos"),
+        ]);
+        // A shared wrapper alone is not evidence that native game files exist.
+        assert_eq!(
+            installed_platform(&g, dir.path()).as_deref(),
+            Some("windows")
+        );
+        std::fs::write(dir.path().join("game_osx"), [0xcf, 0xfa, 0xed, 0xfe]).unwrap();
+        assert_eq!(installed_platform(&g, dir.path()).as_deref(), Some("macos"));
+        std::fs::remove_file(dir.path().join("game_osx")).unwrap();
+        std::fs::create_dir(dir.path().join("Game.app")).unwrap();
+        assert_eq!(installed_platform(&g, dir.path()).as_deref(), Some("macos"));
+        std::fs::remove_dir(dir.path().join("Game.app")).unwrap();
+        std::fs::remove_file(dir.path().join("game.exe")).unwrap();
+        // Some games expose only their wrapper in PICS; keep that fallback.
+        assert_eq!(installed_platform(&g, dir.path()).as_deref(), Some("macos"));
+    }
+    #[test]
     fn native_arguments_append_once_and_windows_custom_is_left_to_notproton() {
         let options = skinos_compat::GameSettings {
             launch_arguments: "--custom 'c d'".into(),
@@ -982,11 +1136,69 @@ mod tests {
             InstallPlatform::Windows
         );
         g.macos_supported = false;
+        g.installed_platform = None;
         let native = skinos_compat::GameSettings {
             compatibility: "native".into(),
             ..Default::default()
         };
         assert!(platform(&g, &native).is_err());
+    }
+    #[test]
+    fn install_choice_is_native_first_independent_of_launch_preferences() {
+        use skinos_downloader::InstallPlatform::{Macos, Windows};
+        let mut g = game(vec![
+            entry("Game.app", "macos"),
+            entry("game.exe", "windows"),
+        ]);
+        let notproton = skinos_compat::GameSettings {
+            compatibility: "notproton".into(),
+            ..Default::default()
+        };
+        assert_eq!(platform(&g, &notproton).unwrap(), Windows);
+        assert_eq!(download_platform(&g, None, false).unwrap(), Macos);
+        assert_eq!(
+            download_platform(&g, Some(Windows), false).unwrap(),
+            Windows
+        );
+        assert_eq!(download_platform(&g, Some(Macos), false).unwrap(), Macos);
+        g.windows_supported = false;
+        assert!(download_platform(&g, Some(Windows), false).is_err());
+        g.windows_supported = true;
+        g.macos_supported = false;
+        assert_eq!(download_platform(&g, None, false).unwrap(), Windows);
+        assert!(download_platform(&g, Some(Macos), false).is_err());
+        g.windows_supported = false;
+        assert!(download_platform(&g, None, false).is_err());
+    }
+    #[test]
+    fn updates_and_launch_follow_installed_variant_without_rewriting_preferences() {
+        use skinos_downloader::InstallPlatform::{Macos, Windows};
+        let mut g = game(vec![
+            entry("Game.app", "macos"),
+            entry("game.exe", "windows"),
+        ]);
+        g.installed_dir = Some("/unused/test/Game".into());
+        for (installed, other, stale_preference) in
+            [(Macos, Windows, "notproton"), (Windows, Macos, "native")]
+        {
+            g.installed_platform = Some(installed.os().into());
+            let settings = skinos_compat::GameSettings {
+                compatibility: stale_preference.into(),
+                ..Default::default()
+            };
+            assert_eq!(platform(&g, &settings).unwrap(), installed);
+            assert_eq!(download_platform(&g, None, true).unwrap(), installed);
+            assert_eq!(
+                download_platform(&g, Some(installed), true).unwrap(),
+                installed
+            );
+            assert!(download_platform(&g, Some(other), true).is_err());
+            assert!(download_platform(&g, Some(other), false).is_err());
+            assert_eq!(settings.compatibility, stale_preference);
+        }
+        g.installed_platform = None;
+        assert!(download_platform(&g, None, true).is_err());
+        assert!(download_platform(&g, Some(Macos), true).is_err());
     }
     #[test]
     fn selected_executable_cannot_escape_game_through_symlink() {

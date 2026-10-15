@@ -70,6 +70,7 @@ struct GameDownload: Identifiable {
     var complete = false
     var failed = false
     var isUpdate = false
+    var platform: InstallPlatform?
 
     var cancelled: Bool { phase == "cancelled" }
     var isActive: Bool { !complete && !failed && !cancelled }
