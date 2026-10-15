@@ -1,0 +1,30 @@
+name: Feature request / Предложение
+description: Describe a concrete use case and the behavior you need.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: English and Russian are welcome. Explain the user problem with a concrete example.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe what should happen and what would count as working.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or related issues
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you like to help?
+      options:
+        - I can test the result
+        - I can investigate or contribute an implementation
+        - I am sharing the idea

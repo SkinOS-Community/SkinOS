@@ -1,0 +1,56 @@
+name: Bug report / Ошибка
+description: Report reproducible behavior, with private information removed.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English and Russian are welcome. For a vulnerability, read SECURITY.md and report privately.
+        Do not attach tokens, cookies, login QR codes, Guard codes, account directories or private chat history.
+  - type: input
+    id: version
+    attributes:
+      label: SkinOS version / commit
+      placeholder: Version from About, or the commit of your source build
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: macOS version and Mac chip
+      placeholder: macOS 15.x, Apple M1
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the game name and AppID if relevant. Do not include your Steam ID.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Game runtime or download details
+      description: If relevant, include native/NotProton, CrossOver version, graphics backend, launch options, download region and controller model.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Relevant diagnostic excerpt
+      description: Paste only the relevant excerpt after inspecting redaction. Remove credentials, account names, Steam IDs, personal paths and private messages. Never upload the full application data directory.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: I reviewed the report and attachments and removed private information.
+          required: true
+        - label: I searched existing issues for this problem.
+          required: true

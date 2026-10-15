@@ -1,0 +1,1118 @@
+[
+  {
+    "id": 1,
+    "name": "США — Чикаго",
+    "name_en": "US - Chicago",
+    "loc_name": "us_chicago"
+  },
+  {
+    "id": 2,
+    "name": "США — Нью-Йорк",
+    "name_en": "US - New York",
+    "loc_name": "us_newyork"
+  },
+  {
+    "id": 4,
+    "name": "Великобритания — Лондон",
+    "name_en": "UK - London",
+    "loc_name": "uk_london"
+  },
+  {
+    "id": 5,
+    "name": "Германия — Франкфурт",
+    "name_en": "Germany - Frankfurt",
+    "loc_name": "de_frankfurt"
+  },
+  {
+    "id": 7,
+    "name": "Россия — Москва",
+    "name_en": "Russia - Moscow",
+    "loc_name": "ru_moscow"
+  },
+  {
+    "id": 8,
+    "name": "Южная Корея — Сеул",
+    "name_en": "South Korea - Seoul",
+    "loc_name": "kr_seoul"
+  },
+  {
+    "id": 9,
+    "name": "Тайвань",
+    "name_en": "Taiwan",
+    "loc_name": "tw_taiwan"
+  },
+  {
+    "id": 10,
+    "name": "США — Сан-Хосе",
+    "name_en": "US - San Jose",
+    "loc_name": "us_sanjose"
+  },
+  {
+    "id": 11,
+    "name": "США — Финикс",
+    "name_en": "US - Phoenix",
+    "loc_name": "us_phoenix"
+  },
+  {
+    "id": 12,
+    "name": "США — Майами",
+    "name_en": "US - Miami",
+    "loc_name": "us_miami"
+  },
+  {
+    "id": 14,
+    "name": "Франция — Париж",
+    "name_en": "France - Paris",
+    "loc_name": "fr_paris"
+  },
+  {
+    "id": 15,
+    "name": "Нидерланды",
+    "name_en": "Netherlands",
+    "loc_name": "nl_amsterdam"
+  },
+  {
+    "id": 16,
+    "name": "Румыния",
+    "name_en": "Romania",
+    "loc_name": "ro_bucharest"
+  },
+  {
+    "id": 20,
+    "name": "Канада — Торонто",
+    "name_en": "Canada - Toronto",
+    "loc_name": "ca_toronto"
+  },
+  {
+    "id": 22,
+    "name": "Новая Зеландия",
+    "name_en": "New Zealand",
+    "loc_name": "nz_auckland"
+  },
+  {
+    "id": 25,
+    "name": "Бразилия — Сан-Паулу",
+    "name_en": "Brazil - São Paulo",
+    "loc_name": "br_sao_paulo"
+  },
+  {
+    "id": 26,
+    "name": "Южная Африка — Йоханнесбург",
+    "name_en": "South Africa - Johannesburg",
+    "loc_name": "za_johannesburg"
+  },
+  {
+    "id": 29,
+    "name": "Исландия, Гренландия, Фарерские острова",
+    "name_en": "Iceland, Greenland, Faroe Islands",
+    "loc_name": "iceland"
+  },
+  {
+    "id": 30,
+    "name": "Израиль",
+    "name_en": "Israel",
+    "loc_name": "israel"
+  },
+  {
+    "id": 31,
+    "name": "США — Сиэтл",
+    "name_en": "US - Seattle",
+    "loc_name": "us_seattle"
+  },
+  {
+    "id": 32,
+    "name": "Япония — Токио",
+    "name_en": "Japan - Tokyo",
+    "loc_name": "jp_tokyo"
+  },
+  {
+    "id": 33,
+    "name": "Китай — Гонконг",
+    "name_en": "China - Hong Kong",
+    "loc_name": "cn_hongkong"
+  },
+  {
+    "id": 34,
+    "name": "Таиланд",
+    "name_en": "Thailand",
+    "loc_name": "th_bangkok"
+  },
+  {
+    "id": 35,
+    "name": "Сингапур",
+    "name_en": "Singapore",
+    "loc_name": "singapore"
+  },
+  {
+    "id": 36,
+    "name": "Индия — Мумбаи",
+    "name_en": "India - Mumbai",
+    "loc_name": "in_mumbai"
+  },
+  {
+    "id": 37,
+    "name": "Италия — Рим",
+    "name_en": "Italy - Rome",
+    "loc_name": "it_rome"
+  },
+  {
+    "id": 38,
+    "name": "Польша — Варшава",
+    "name_en": "Poland - Warsaw",
+    "loc_name": "pl_warsaw"
+  },
+  {
+    "id": 39,
+    "name": "Россия — Екатеринбург",
+    "name_en": "Russia - Yekaterinburg",
+    "loc_name": "ru_yekaterinburg"
+  },
+  {
+    "id": 40,
+    "name": "Испания — Мадрид",
+    "name_en": "Spain - Madrid",
+    "loc_name": "es_madrid"
+  },
+  {
+    "id": 41,
+    "name": "Дания",
+    "name_en": "Denmark",
+    "loc_name": "dk_copenhagen"
+  },
+  {
+    "id": 42,
+    "name": "Чехия",
+    "name_en": "Czech Republic",
+    "loc_name": "cz_prague"
+  },
+  {
+    "id": 43,
+    "name": "Греция",
+    "name_en": "Greece",
+    "loc_name": "gr_athens"
+  },
+  {
+    "id": 44,
+    "name": "Индонезия — Джакарта",
+    "name_en": "Indonesia - Jakarta",
+    "loc_name": "in_jakarta"
+  },
+  {
+    "id": 45,
+    "name": "Филиппины — Манила",
+    "name_en": "Philippines - Manila",
+    "loc_name": "ph_manila"
+  },
+  {
+    "id": 46,
+    "name": "Китай — Пекин",
+    "name_en": "China - Beijing",
+    "loc_name": "cn_beijing"
+  },
+  {
+    "id": 47,
+    "name": "Китай — Шанхай",
+    "name_en": "China - Shanghai",
+    "loc_name": "cn_shanghai"
+  },
+  {
+    "id": 48,
+    "name": "Китай — Чэнду",
+    "name_en": "China - Chengdu",
+    "loc_name": "cn_chengdu"
+  },
+  {
+    "id": 49,
+    "name": "США — Денвер",
+    "name_en": "US - Denver",
+    "loc_name": "us_denver"
+  },
+  {
+    "id": 50,
+    "name": "США — Атланта",
+    "name_en": "US - Atlanta",
+    "loc_name": "us_atlanta"
+  },
+  {
+    "id": 51,
+    "name": "Австралия — Брисбен",
+    "name_en": "Australia - Brisbane",
+    "loc_name": "au_brisbane"
+  },
+  {
+    "id": 52,
+    "name": "Австралия — Сидней",
+    "name_en": "Australia - Sydney",
+    "loc_name": "au_sydney"
+  },
+  {
+    "id": 53,
+    "name": "Австралия — Мельбурн",
+    "name_en": "Australia - Melbourne",
+    "loc_name": "au_melbourne"
+  },
+  {
+    "id": 54,
+    "name": "Австралия — Аделаида",
+    "name_en": "Australia - Adelaide",
+    "loc_name": "au_adelaide"
+  },
+  {
+    "id": 55,
+    "name": "Австралия — Перт",
+    "name_en": "Australia - Perth",
+    "loc_name": "au_perth"
+  },
+  {
+    "id": 62,
+    "name": "Россия — Новосибирск",
+    "name_en": "Russia - Novosibirsk",
+    "loc_name": "ru_novosibirsk"
+  },
+  {
+    "id": 63,
+    "name": "США — Вашингтон (округ Колумбия)",
+    "name_en": "US - Washington, DC",
+    "loc_name": "us_dc"
+  },
+  {
+    "id": 64,
+    "name": "США — Лос-Анджелес",
+    "name_en": "US - Los Angeles",
+    "loc_name": "us_la"
+  },
+  {
+    "id": 65,
+    "name": "США — Даллас",
+    "name_en": "US - Dallas",
+    "loc_name": "us_dallas"
+  },
+  {
+    "id": 66,
+    "name": "Швеция — Стокгольм",
+    "name_en": "Sweden - Stockholm",
+    "loc_name": "se_stockholm"
+  },
+  {
+    "id": 67,
+    "name": "Норвегия — Осло",
+    "name_en": "Norway - Oslo",
+    "loc_name": "no_oslo"
+  },
+  {
+    "id": 68,
+    "name": "Финляндия — Хельсинки",
+    "name_en": "Finland - Helsinki",
+    "loc_name": "fi_helsinki"
+  },
+  {
+    "id": 69,
+    "name": "Ирландия",
+    "name_en": "Ireland",
+    "loc_name": "ie_dublin"
+  },
+  {
+    "id": 70,
+    "name": "Камбоджа",
+    "name_en": "Cambodia",
+    "loc_name": "cambodia"
+  },
+  {
+    "id": 71,
+    "name": "Вьетнам",
+    "name_en": "Vietnam",
+    "loc_name": "vietnam"
+  },
+  {
+    "id": 72,
+    "name": "Малайзия — Куала-Лумпур",
+    "name_en": "Malaysia - Kuala Lumpur",
+    "loc_name": "my_kualalumpur"
+  },
+  {
+    "id": 73,
+    "name": "Украина — Киев",
+    "name_en": "Ukraine - Kyiv",
+    "loc_name": "ua_kiev"
+  },
+  {
+    "id": 74,
+    "name": "США — Сан-Диего",
+    "name_en": "US - San Diego",
+    "loc_name": "us_sandiego"
+  },
+  {
+    "id": 75,
+    "name": "США — Сакраменто",
+    "name_en": "US - Sacramento",
+    "loc_name": "us_sacramento"
+  },
+  {
+    "id": 76,
+    "name": "США — Миннеаполис",
+    "name_en": "US - Minneapolis",
+    "loc_name": "us_minneapolis"
+  },
+  {
+    "id": 77,
+    "name": "США — Сент-Луис",
+    "name_en": "US - St. Louis",
+    "loc_name": "us_stlouis"
+  },
+  {
+    "id": 78,
+    "name": "США — Хьюстон",
+    "name_en": "US - Houston",
+    "loc_name": "us_houston"
+  },
+  {
+    "id": 79,
+    "name": "США — Детройт",
+    "name_en": "US - Detroit",
+    "loc_name": "us_detroit"
+  },
+  {
+    "id": 80,
+    "name": "США — Питтсбург",
+    "name_en": "US - Pittsburgh",
+    "loc_name": "us_pittsburgh"
+  },
+  {
+    "id": 81,
+    "name": "Канада — Монреаль",
+    "name_en": "Canada - Montreal",
+    "loc_name": "ca_montreal"
+  },
+  {
+    "id": 82,
+    "name": "США — Бостон",
+    "name_en": "US - Boston",
+    "loc_name": "us_boston"
+  },
+  {
+    "id": 83,
+    "name": "США — Филадельфия",
+    "name_en": "US - Philadelphia",
+    "loc_name": "us_philadelphia"
+  },
+  {
+    "id": 84,
+    "name": "США — Шарлотт",
+    "name_en": "US - Charlotte",
+    "loc_name": "us_charlotte"
+  },
+  {
+    "id": 85,
+    "name": "Великобритания — Манчестер",
+    "name_en": "UK - Manchester",
+    "loc_name": "uk_manchester"
+  },
+  {
+    "id": 86,
+    "name": "Бельгия",
+    "name_en": "Belgium",
+    "loc_name": "belgium"
+  },
+  {
+    "id": 87,
+    "name": "Германия — Дюссельдорф",
+    "name_en": "Germany - Dusseldorf",
+    "loc_name": "de_dusseldorf"
+  },
+  {
+    "id": 88,
+    "name": "Швейцария",
+    "name_en": "Switzerland",
+    "loc_name": "switzerland"
+  },
+  {
+    "id": 89,
+    "name": "Германия — Гамбург",
+    "name_en": "Germany - Hamburg",
+    "loc_name": "de_hamburg"
+  },
+  {
+    "id": 90,
+    "name": "Германия — Берлин",
+    "name_en": "Germany - Berlin",
+    "loc_name": "de_berlin"
+  },
+  {
+    "id": 91,
+    "name": "Германия — Мюнхен",
+    "name_en": "Germany - Munich",
+    "loc_name": "de_munich"
+  },
+  {
+    "id": 92,
+    "name": "Австрия",
+    "name_en": "Austria",
+    "loc_name": "at_vienna"
+  },
+  {
+    "id": 93,
+    "name": "Венгрия",
+    "name_en": "Hungary",
+    "loc_name": "hu_budapest"
+  },
+  {
+    "id": 94,
+    "name": "Канада — Ванкувер",
+    "name_en": "Canada - Vancouver",
+    "loc_name": "ca_vancouver"
+  },
+  {
+    "id": 95,
+    "name": "США — Колумбус",
+    "name_en": "US - Columbus",
+    "loc_name": "us_columbus"
+  },
+  {
+    "id": 96,
+    "name": "Франция — Марсель",
+    "name_en": "France - Marseille",
+    "loc_name": "fr_marseille"
+  },
+  {
+    "id": 97,
+    "name": "Южная Африка — Кейптаун",
+    "name_en": "South Africa - Cape Town",
+    "loc_name": "za_capetown"
+  },
+  {
+    "id": 115,
+    "name": "Мексика — Мехико",
+    "name_en": "Mexico - Mexico City",
+    "loc_name": "mx_mexicocity"
+  },
+  {
+    "id": 116,
+    "name": "Аргентина — Буэнос-Айрес",
+    "name_en": "Argentina - Buenos Aires",
+    "loc_name": "ar_buenosaires"
+  },
+  {
+    "id": 117,
+    "name": "Чили — Сантьяго",
+    "name_en": "Chile - Santiago",
+    "loc_name": "cl_santiago"
+  },
+  {
+    "id": 118,
+    "name": "Перу — Лима",
+    "name_en": "Peru - Lima",
+    "loc_name": "pe_lima"
+  },
+  {
+    "id": 119,
+    "name": "Колумбия — Богота",
+    "name_en": "Colombia - Bogota",
+    "loc_name": "co_bogota"
+  },
+  {
+    "id": 124,
+    "name": "Турция — Стамбул",
+    "name_en": "Turkey - Istanbul",
+    "loc_name": "tr_istanbul"
+  },
+  {
+    "id": 125,
+    "name": "Египет — Каир",
+    "name_en": "Egypt - Cairo",
+    "loc_name": "eg_cairo"
+  },
+  {
+    "id": 126,
+    "name": "Саудовская Аравия — Эр-Рияд",
+    "name_en": "Saudi Arabia - Riyadh",
+    "loc_name": "sa_riyadh"
+  },
+  {
+    "id": 127,
+    "name": "Объединённые Арабские Эмираты",
+    "name_en": "United Arab Emirates",
+    "loc_name": "ua_dubai"
+  },
+  {
+    "id": 128,
+    "name": "Пакистан — Карачи",
+    "name_en": "Pakistan - Karachi",
+    "loc_name": "pk_karachi"
+  },
+  {
+    "id": 129,
+    "name": "Люксембург",
+    "name_en": "Luxembourg",
+    "loc_name": "luxembourg"
+  },
+  {
+    "id": 130,
+    "name": "Африка — запад",
+    "name_en": "Africa - West",
+    "loc_name": "ng_lagos"
+  },
+  {
+    "id": 131,
+    "name": "Африка — восток",
+    "name_en": "Africa - East",
+    "loc_name": "ke_nairobi"
+  },
+  {
+    "id": 132,
+    "name": "Африка — северо-запад",
+    "name_en": "Africa - Northwest",
+    "loc_name": "ma_rabat"
+  },
+  {
+    "id": 133,
+    "name": "Канада — Эдмонтон",
+    "name_en": "Canada - Edmonton",
+    "loc_name": "ca_edmonton"
+  },
+  {
+    "id": 134,
+    "name": "Канада — Калгари",
+    "name_en": "Canada - Calgary",
+    "loc_name": "ca_calgary"
+  },
+  {
+    "id": 135,
+    "name": "Канада — Виннипег",
+    "name_en": "Canada - Winnipeg",
+    "loc_name": "ca_winnipeg"
+  },
+  {
+    "id": 136,
+    "name": "Канада — Оттава",
+    "name_en": "Canada - Ottawa",
+    "loc_name": "ca_ottawa"
+  },
+  {
+    "id": 139,
+    "name": "Центральная Америка",
+    "name_en": "Central America",
+    "loc_name": "panama"
+  },
+  {
+    "id": 140,
+    "name": "Карибские острова",
+    "name_en": "Caribbean",
+    "loc_name": "puerto_rico"
+  },
+  {
+    "id": 141,
+    "name": "Индия — Ченнаи",
+    "name_en": "India - Chennai",
+    "loc_name": "in_chennai"
+  },
+  {
+    "id": 142,
+    "name": "Индия — Дели",
+    "name_en": "India - Delhi",
+    "loc_name": "in_delhi"
+  },
+  {
+    "id": 143,
+    "name": "Индия — Бангалор",
+    "name_en": "India - Bangalore",
+    "loc_name": "in_bangalore"
+  },
+  {
+    "id": 144,
+    "name": "Индия — Хайдарабад",
+    "name_en": "India - Hyderabad",
+    "loc_name": "in_hyderabad"
+  },
+  {
+    "id": 145,
+    "name": "Индия — Калькутта",
+    "name_en": "India - Kolkata",
+    "loc_name": "in_kolkata"
+  },
+  {
+    "id": 146,
+    "name": "США — Гонолулу",
+    "name_en": "US - Honolulu",
+    "loc_name": "us_honolulu"
+  },
+  {
+    "id": 147,
+    "name": "США — Анкоридж",
+    "name_en": "US - Anchorage",
+    "loc_name": "us_anchorage"
+  },
+  {
+    "id": 148,
+    "name": "Китай — Гуанчжоу",
+    "name_en": "China - Guangzhou",
+    "loc_name": "cn_guangzhou"
+  },
+  {
+    "id": 149,
+    "name": "Россия — Санкт-Петербург",
+    "name_en": "Russia - St. Petersburg",
+    "loc_name": "ru_stpetersburg"
+  },
+  {
+    "id": 150,
+    "name": "Россия — Ростов-на-Дону",
+    "name_en": "Russia - Rostov-Na-Donu",
+    "loc_name": "ru_rostov"
+  },
+  {
+    "id": 151,
+    "name": "Россия — Казань",
+    "name_en": "Russia - Kazan",
+    "loc_name": "ru_kazan"
+  },
+  {
+    "id": 152,
+    "name": "Россия — Владивосток",
+    "name_en": "Russia - Vladivostok",
+    "loc_name": "ru_vladivostok"
+  },
+  {
+    "id": 153,
+    "name": "Бразилия — Ресифи",
+    "name_en": "Brazil - Recife",
+    "loc_name": "br_recife"
+  },
+  {
+    "id": 154,
+    "name": "Бразилия — Бразилиа",
+    "name_en": "Brazil - Brasilia",
+    "loc_name": "br_brasilia"
+  },
+  {
+    "id": 155,
+    "name": "Бразилия — Рио-де-Жанейро",
+    "name_en": "Brazil - Rio de Janeiro",
+    "loc_name": "br_rio"
+  },
+  {
+    "id": 156,
+    "name": "Бразилия — Порту-Алегри",
+    "name_en": "Brazil - Porto Alegre",
+    "loc_name": "br_portoalegre"
+  },
+  {
+    "id": 157,
+    "name": "Россия — Иркутск",
+    "name_en": "Russia - Irkutsk",
+    "loc_name": "ru_irkutsk"
+  },
+  {
+    "id": 158,
+    "name": "Казахстан — Астана",
+    "name_en": "Kazakhstan - Astana",
+    "loc_name": "kazakhstan"
+  },
+  {
+    "id": 159,
+    "name": "Китай — Ухань",
+    "name_en": "China - Wuhan",
+    "loc_name": "cn_wuhan"
+  },
+  {
+    "id": 160,
+    "name": "Китай — Сиань",
+    "name_en": "China - Xi'an",
+    "loc_name": "cn_xian"
+  },
+  {
+    "id": 161,
+    "name": "Монголия",
+    "name_en": "Mongolia",
+    "loc_name": "mongolia"
+  },
+  {
+    "id": 162,
+    "name": "Венесуэла",
+    "name_en": "Venezuela",
+    "loc_name": "venezuela"
+  },
+  {
+    "id": 163,
+    "name": "Эквадор",
+    "name_en": "Ecuador",
+    "loc_name": "ecuador"
+  },
+  {
+    "id": 164,
+    "name": "Боливия",
+    "name_en": "Bolivia",
+    "loc_name": "bolivia"
+  },
+  {
+    "id": 165,
+    "name": "Беларусь",
+    "name_en": "Belarus",
+    "loc_name": "belarus"
+  },
+  {
+    "id": 166,
+    "name": "Китай — Харбин",
+    "name_en": "China - Harbin",
+    "loc_name": "cn_harbin"
+  },
+  {
+    "id": 167,
+    "name": "Китай — Куньмин",
+    "name_en": "China - Kunming",
+    "loc_name": "cn_kunming"
+  },
+  {
+    "id": 168,
+    "name": "Китай — Циндао",
+    "name_en": "China - Qingdao",
+    "loc_name": "cn_qingdao"
+  },
+  {
+    "id": 169,
+    "name": "Китай — Урумчи",
+    "name_en": "China - Urumqi",
+    "loc_name": "cn_urumqi"
+  },
+  {
+    "id": 170,
+    "name": "Китай — Чжэнчжоу",
+    "name_en": "China - Zhengzhou",
+    "loc_name": "cn_zhengzhou"
+  },
+  {
+    "id": 171,
+    "name": "Китай — Чанша",
+    "name_en": "China - Changsha",
+    "loc_name": "cn_changsha"
+  },
+  {
+    "id": 172,
+    "name": "Кавказ",
+    "name_en": "Caucasus",
+    "loc_name": "caucasus"
+  },
+  {
+    "id": 173,
+    "name": "Центральная Азия",
+    "name_en": "Central Asia",
+    "loc_name": "central_asia"
+  },
+  {
+    "id": 174,
+    "name": "Острова Тихого океана",
+    "name_en": "Pacific Islands",
+    "loc_name": "pacific_islands"
+  },
+  {
+    "id": 175,
+    "name": "Швеция — Мальмё",
+    "name_en": "Sweden - Malmö",
+    "loc_name": "se_malmo"
+  },
+  {
+    "id": 176,
+    "name": "Швеция — Гётеборг",
+    "name_en": "Sweden - Gothenburg",
+    "loc_name": "se_goteborg"
+  },
+  {
+    "id": 177,
+    "name": "Япония — Саппоро",
+    "name_en": "Japan - Sapporo",
+    "loc_name": "jp_sapporo"
+  },
+  {
+    "id": 178,
+    "name": "Япония — Сендай",
+    "name_en": "Japan - Sendai",
+    "loc_name": "jp_sendai"
+  },
+  {
+    "id": 179,
+    "name": "Япония — Нагоя",
+    "name_en": "Japan - Nagoya",
+    "loc_name": "jp_nagoya"
+  },
+  {
+    "id": 180,
+    "name": "Япония — Осака",
+    "name_en": "Japan - Osaka",
+    "loc_name": "jp_osaka"
+  },
+  {
+    "id": 181,
+    "name": "Япония — Фукуока",
+    "name_en": "Japan - Fukuoka",
+    "loc_name": "jp_fukuoka"
+  },
+  {
+    "id": 182,
+    "name": "Южная Корея — Пусан",
+    "name_en": "South Korea - Busan",
+    "loc_name": "kr_busan"
+  },
+  {
+    "id": 183,
+    "name": "Польша — Катовице",
+    "name_en": "Poland - Katowice",
+    "loc_name": "pl_katowice"
+  },
+  {
+    "id": 184,
+    "name": "Италия — Милан",
+    "name_en": "Italy - Milan",
+    "loc_name": "it_milan"
+  },
+  {
+    "id": 185,
+    "name": "Португалия",
+    "name_en": "Portugal",
+    "loc_name": "portugal"
+  },
+  {
+    "id": 186,
+    "name": "Испания — Барселона",
+    "name_en": "Spain - Barcelona",
+    "loc_name": "es_barcelona"
+  },
+  {
+    "id": 187,
+    "name": "Испания — Валенсия",
+    "name_en": "Spain - Valencia",
+    "loc_name": "es_valencia"
+  },
+  {
+    "id": 188,
+    "name": "Испания — Малага",
+    "name_en": "Spain - Malaga",
+    "loc_name": "es_malaga"
+  },
+  {
+    "id": 189,
+    "name": "Турция — Анкара",
+    "name_en": "Turkey - Ankara",
+    "loc_name": "tr_ankara"
+  },
+  {
+    "id": 190,
+    "name": "Турция — Измир",
+    "name_en": "Turkey - İzmir",
+    "loc_name": "tr_izmir"
+  },
+  {
+    "id": 191,
+    "name": "Украина — Одесса",
+    "name_en": "Ukraine - Odessa",
+    "loc_name": "ua_odessa"
+  },
+  {
+    "id": 192,
+    "name": "Украина — Львов",
+    "name_en": "Ukraine - Lviv",
+    "loc_name": "ua_lviv"
+  },
+  {
+    "id": 193,
+    "name": "Украина — Харьков",
+    "name_en": "Ukraine - Kharkiv",
+    "loc_name": "ua_kharkiv"
+  },
+  {
+    "id": 194,
+    "name": "Болгария",
+    "name_en": "Bulgaria",
+    "loc_name": "bulgaria"
+  },
+  {
+    "id": 195,
+    "name": "Хорватия",
+    "name_en": "Croatia",
+    "loc_name": "croatia"
+  },
+  {
+    "id": 196,
+    "name": "Литва",
+    "name_en": "Lithuania",
+    "loc_name": "lithuania"
+  },
+  {
+    "id": 197,
+    "name": "Китай — Сучжоу",
+    "name_en": "China - Suzhou",
+    "loc_name": "cn_suzhou"
+  },
+  {
+    "id": 198,
+    "name": "Китай — Ханчжоу",
+    "name_en": "China - Hangzhou",
+    "loc_name": "cn_hangzhou"
+  },
+  {
+    "id": 199,
+    "name": "Китай — Нинбо",
+    "name_en": "China - Ningbo",
+    "loc_name": "cn_ningbo"
+  },
+  {
+    "id": 200,
+    "name": "Китай — Нанкин",
+    "name_en": "China - Nanjing",
+    "loc_name": "cn_nanjing"
+  },
+  {
+    "id": 201,
+    "name": "Китай — Шэньчжэнь",
+    "name_en": "China - Shenzhen",
+    "loc_name": "cn_shenzhen"
+  },
+  {
+    "id": 202,
+    "name": "Китай — Дунгуань",
+    "name_en": "China - Dongguan",
+    "loc_name": "cn_dongguan"
+  },
+  {
+    "id": 203,
+    "name": "Китай — Тяньцзинь",
+    "name_en": "China - Tianjin",
+    "loc_name": "cn_tianjin"
+  },
+  {
+    "id": 204,
+    "name": "Китай — Чунцин",
+    "name_en": "China - Chongqing",
+    "loc_name": "cn_chongqing"
+  },
+  {
+    "id": 205,
+    "name": "Китай — Шэньян",
+    "name_en": "China - Shenyang",
+    "loc_name": "cn_shenyang"
+  },
+  {
+    "id": 206,
+    "name": "Китай — Далянь",
+    "name_en": "China - Dalian",
+    "loc_name": "cn_dalian"
+  },
+  {
+    "id": 207,
+    "name": "США — Остин",
+    "name_en": "US - Austin",
+    "loc_name": "us_austin"
+  },
+  {
+    "id": 208,
+    "name": "Филиппины — Себу",
+    "name_en": "Philippines - Cebu",
+    "loc_name": "ph_cebu"
+  },
+  {
+    "id": 209,
+    "name": "Филиппины — Давао",
+    "name_en": "Philippines - Davao",
+    "loc_name": "ph_davao"
+  },
+  {
+    "id": 210,
+    "name": "Филиппины — Багио",
+    "name_en": "Philippines - Baguio",
+    "loc_name": "ph_baguio"
+  },
+  {
+    "id": 211,
+    "name": "Китай — Наньнин",
+    "name_en": "China - Nanning",
+    "loc_name": "cn_nanning"
+  },
+  {
+    "id": 212,
+    "name": "Канарские острова",
+    "name_en": "Canary Islands",
+    "loc_name": "canary_islands"
+  },
+  {
+    "id": 213,
+    "name": "Маврикий",
+    "name_en": "Mauritius",
+    "loc_name": "maritius"
+  },
+  {
+    "id": 214,
+    "name": "Реюньон",
+    "name_en": "Reunion",
+    "loc_name": "reunion"
+  },
+  {
+    "id": 215,
+    "name": "Кувейт",
+    "name_en": "Kuwait",
+    "loc_name": "kuwait"
+  },
+  {
+    "id": 216,
+    "name": "Украина — Севастополь",
+    "name_en": "Ukraine - Sevastopol",
+    "loc_name": "ua_sevastopol"
+  },
+  {
+    "id": 217,
+    "name": "Казахстан — Алматы",
+    "name_en": "Kazakhstan - Almaty",
+    "loc_name": "kz_almaty"
+  },
+  {
+    "id": 218,
+    "name": "Латвия",
+    "name_en": "Latvia",
+    "loc_name": "lv_riga"
+  },
+  {
+    "id": 219,
+    "name": "Бразилия — Куяба",
+    "name_en": "Brazil - Cuiabá",
+    "loc_name": "br_cuiaba"
+  },
+  {
+    "id": 220,
+    "name": "Бразилия — Белу-Оризонти",
+    "name_en": "Brazil - Belo Horizonte",
+    "loc_name": "br_belohorizonte"
+  },
+  {
+    "id": 221,
+    "name": "Бразилия — Куритиба",
+    "name_en": "Brazil - Curitiba",
+    "loc_name": "br_curitiba"
+  },
+  {
+    "id": 222,
+    "name": "Бразилия — Кампу-Гранди",
+    "name_en": "Brazil - Campo Grande",
+    "loc_name": "br_campogrande"
+  },
+  {
+    "id": 223,
+    "name": "Бразилия — Манаус",
+    "name_en": "Brazil - Manaus",
+    "loc_name": "br_manaus"
+  },
+  {
+    "id": 224,
+    "name": "Бразилия — Белен",
+    "name_en": "Brazil - Belém",
+    "loc_name": "br_belem"
+  },
+  {
+    "id": 225,
+    "name": "Бразилия — Сальвадор",
+    "name_en": "Brazil - Salvador",
+    "loc_name": "br_salvador"
+  },
+  {
+    "id": 226,
+    "name": "Гуам",
+    "name_en": "Guam",
+    "loc_name": "guam"
+  }
+]

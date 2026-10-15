@@ -1,0 +1,25 @@
+SkinOS
+Copyright (C) 2026 SkinOS contributors
+
+SkinOS-authored source is licensed under GPL-3.0-only; see LICENSE.
+The root license does not relicense third-party code, protocols, fonts, SDKs,
+trademarks, or runtime components. Existing file-level notices take precedence
+for their respective components.
+
+Third-party components:
+- steam-cm-protocol: MIT. License retained in
+  crates/client-core/vendor/steam-cm-protocol/LICENSE.
+- NotProton: principally GPL-3.0, with separately licensed components listed in
+  its upstream NOTICE. The exact source revision is pinned in
+  third_party/notproton/UPSTREAM.json and fetched separately.
+- Wine-derived input integration: LGPL-2.1-or-later. Sources and notices are in
+  third_party/notproton/integration/wine-input/ and its rumble-experiment/ tree.
+- Sparkle: MIT and the accompanying third-party notices. Its exact version and
+  binary checksum are pinned by Swift Package Manager. The complete upstream
+  LICENSE is included with distributed applications.
+- Rust and Swift dependencies retain their own licenses and copyright notices.
+
+Steam and Steamworks are trademarks of Valve Corporation. SkinOS is an
+independent community project and is not affiliated with or endorsed by Valve.
+Proprietary runtime components are not licensed under the SkinOS source license.
+Account entitlements and Steam's content authorization remain required.

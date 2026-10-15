@@ -1,0 +1,259 @@
+{
+  "appid": 570,
+  "common": {
+    "name": "Dota 2",
+    "oslist": "windows,macos,linux"
+  },
+  "depots": {
+    "228983": {
+      "config": {
+        "oslist": "windows"
+      },
+      "depotfromapp": 228980,
+      "sharedinstall": 1
+    },
+    "228989": {
+      "config": {
+        "oslist": "windows"
+      },
+      "depotfromapp": 228980,
+      "sharedinstall": 1
+    },
+    "228990": {
+      "config": {
+        "oslist": "windows"
+      },
+      "depotfromapp": 228980,
+      "sharedinstall": 1
+    },
+    "overridescddb": 1,
+    "markdlcdepots": 1,
+    "workshopdepot": 570,
+    "373301": {
+      "manifests": {
+        "public": {
+          "gid": "8772972812796398799",
+          "size": "5064323915",
+          "download": "3245065792"
+        }
+      }
+    },
+    "381451": {
+      "manifests": {
+        "public": {
+          "gid": "5232075504352746697",
+          "size": 2106956849,
+          "download": 983678208
+        }
+      }
+    },
+    "381452": {
+      "manifests": {
+        "public": {
+          "gid": "6243720514386023779",
+          "size": 2113343022,
+          "download": 1355752512
+        }
+      }
+    },
+    "381453": {
+      "manifests": {
+        "public": {
+          "gid": "4231055031322070791",
+          "size": 2095974931,
+          "download": 1211308416
+        }
+      }
+    },
+    "381454": {
+      "manifests": {
+        "public": {
+          "gid": "2296866404193118154",
+          "size": "2186634766",
+          "download": 866007808
+        }
+      }
+    },
+    "381455": {
+      "manifests": {
+        "public": {
+          "gid": "6242195658534350142",
+          "size": "62904114063",
+          "download": "27732600176"
+        }
+      }
+    },
+    "373302": {
+      "config": {
+        "oslist": "windows"
+      },
+      "manifests": {
+        "public": {
+          "gid": "4238575922933450716",
+          "size": 136358601,
+          "download": 131160752
+        }
+      }
+    },
+    "373303": {
+      "config": {
+        "oslist": "windows",
+        "osarch": 64
+      },
+      "manifests": {
+        "public": {
+          "gid": "6578673652511302295",
+          "size": 655068824,
+          "download": 195155408
+        }
+      }
+    },
+    "373304": {
+      "config": {
+        "oslist": "macos"
+      },
+      "manifests": {
+        "public": {
+          "gid": "6964283106954241131",
+          "size": 630631782,
+          "download": 295526016
+        }
+      }
+    },
+    "373305": {
+      "manifests": {
+        "public": {
+          "gid": "4435851250675935801",
+          "size": 0,
+          "download": 0
+        }
+      }
+    },
+    "373306": {
+      "config": {
+        "oslist": "linux"
+      },
+      "manifests": {
+        "public": {
+          "gid": "828384521023525347",
+          "size": 750835508,
+          "download": 316742016
+        }
+      }
+    },
+    "373307": {
+      "config": {
+        "lowviolence": 1
+      },
+      "manifests": {
+        "public": {
+          "gid": "3932398269472218785",
+          "size": 225462608,
+          "download": 107496448
+        }
+      }
+    },
+    "373308": {
+      "config": {
+        "language": "koreana"
+      },
+      "manifests": {
+        "public": {
+          "gid": "8126429463115692983",
+          "size": 797728138,
+          "download": 727964672
+        }
+      }
+    },
+    "373309": {
+      "config": {
+        "language": "schinese"
+      },
+      "manifests": {
+        "public": {
+          "gid": "351054624666613118",
+          "size": "4753132676",
+          "download": "3301818768"
+        }
+      }
+    },
+    "381456": {
+      "config": {
+        "language": "russian"
+      },
+      "manifests": {
+        "public": {
+          "gid": "8954184990626614529",
+          "size": 580546525,
+          "download": 531016032
+        }
+      }
+    },
+    "381450": {
+      "config": {
+        "oslist": "windows",
+        "osarch": 64,
+        "optionaldlc": 313250
+      },
+      "dlcappid": 313250,
+      "manifests": {
+        "public": {
+          "gid": "7311046443110943175",
+          "size": "5967045625",
+          "download": 1636614848
+        }
+      }
+    },
+    "401531": {
+      "dlcappid": 401530,
+      "config": {
+        "oslist": "windows",
+        "optionaldlc": 401530
+      },
+      "manifests": {
+        "public": {
+          "gid": "3442758096700779883",
+          "size": 23,
+          "download": 80
+        }
+      }
+    },
+    "401535": {
+      "dlcappid": 476580,
+      "manifests": {
+        "public": {
+          "gid": "8129105677939484564",
+          "size": 227621282,
+          "download": 182596688
+        }
+      },
+      "config": {
+        "optionaldlc": 476580
+      }
+    },
+    "401536": {
+      "dlcappid": 476580,
+      "config": {
+        "oslist": "windows",
+        "osarch": 64,
+        "optionaldlc": 476580
+      },
+      "manifests": {
+        "public": {
+          "gid": "8626830787987928686",
+          "size": 0,
+          "download": 0
+        }
+      }
+    },
+    "branches": {
+      "public": {
+        "buildid": 25790067,
+        "timeupdated": 1791414487,
+        "timebuildupdated": 1791412804
+      }
+    },
+    "privatebranches": 1,
+    "appmanagesdlc": 1
+  }
+}

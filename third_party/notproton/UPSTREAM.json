@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/NotProtonNot/NotProton",
+  "revision": "4e8e0556e4972402bf99af4899ea4dc5b3bcd5a8",
+  "version": "1.1.7",
+  "integration_version": 1,
+  "bridge_artifacts": "Pinned gzip artifacts in bridge/manifest.json; source revision/version and SHA-256 validated before every build. Update source and artifacts together with scripts/update-notproton.py."
+}

@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/NotProtonNot/NotProton",
+  "revision": "4e8e0556e4972402bf99af4899ea4dc5b3bcd5a8",
+  "version": "1.1.7",
+  "encoding": "gzip",
+  "font_files": [
+    "fonts/alt/arial.ttf",
+    "fonts/arial.ttf",
+    "fonts/arialbd.ttf",
+    "fonts/cour.ttf",
+    "fonts/courbd.ttf",
+    "fonts/georgia.ttf",
+    "fonts/liberation-fonts/LICENSE",
+    "fonts/lucon.ttf",
+    "fonts/malgun.ttf",
+    "fonts/micross.ttf",
+    "fonts/msgothic.ttc",
+    "fonts/msyh.ttf",
+    "fonts/msyhbd.ttf",
+    "fonts/nirmala.ttf",
+    "fonts/noto/LICENSE",
+    "fonts/simsun.ttc",
+    "fonts/source-han-sans/LICENSE.txt",
+    "fonts/times.ttf",
+    "fonts/ume/license.html"
+  ],
+  "provenance": {
+    "kind": "official-github-release-and-pinned-valve-dependencies",
+    "repository": "https://github.com/NotProtonNot/NotProton",
+    "revision": "4e8e0556e4972402bf99af4899ea4dc5b3bcd5a8",
+    "version": "1.1.7",
+    "release_id": 409860196,
+    "release_url": "https://github.com/NotProtonNot/NotProton/releases/tag/v1.1.7",
+    "tag": "v1.1.7",
+    "asset_id": 631548894,
+    "asset_url": "https://github.com/NotProtonNot/NotProton/releases/download/v1.1.7/NotProton.zip",
+    "asset_sha256": "df116f5185fb57b6f6f8ff5f593b9851edb697a01777e403e1fd23185f9bdbff",
+    "files": {
+      "steam.exe": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/steam.exe",
+        "sha256": "58413caf03cd8d39a7b387f573f2ba921a6d438c2fac2332e43bc195827af5c4"
+      },
+      "lsteamclient.dll": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/x86_64-windows-lsteamclient.dll",
+        "sha256": "00727bb4b4094183826fe81c093d28ee056f1486ca21341ecb427127278ce753"
+      },
+      "x86_64-windows/lsteamclient.dll": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/x86_64-windows-lsteamclient.dll",
+        "sha256": "00727bb4b4094183826fe81c093d28ee056f1486ca21341ecb427127278ce753"
+      },
+      "lsteamclient.so": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/x86_64-unix-lsteamclient.so",
+        "sha256": "2f4b01479d23ccb28bbb30dfda087a0cb1a2fd5053db9ed891183395e065581f"
+      },
+      "x86_64-unix/lsteamclient.so": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/x86_64-unix-lsteamclient.so",
+        "sha256": "2f4b01479d23ccb28bbb30dfda087a0cb1a2fd5053db9ed891183395e065581f"
+      },
+      "aarch64-unix/lsteamclient.so": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/aarch64-unix-lsteamclient.so",
+        "sha256": "7c542d4806a09e3b13d4f1f84b0b6e73bbb8b63691320aff6623a875aba2f642"
+      },
+      "i386-windows/lsteamclient.dll": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/bridge/i386-windows-lsteamclient.dll",
+        "sha256": "53d0c0aa08482cab64906a910772d65d0838b92cf4f4e83b29c794368791e7d4"
+      },
+      "fonts/georgia.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/georgia.ttf",
+        "sha256": "3d5f832f79e24edfd10e463f0b2135691a2b30ccdebb7261f410353438315f5f"
+      },
+      "fonts/arialbd.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/arialbd.ttf",
+        "sha256": "c1110de00446b7379369de71a172e753608fad88cd3f52528d2436acb23b2bc5"
+      },
+      "fonts/ume/license.html": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/ume/license.html",
+        "sha256": "88d5d5a1bf928ff316e3f80d2e665b1a3ab0f46af80ae7d1ec0046b16ea64cdb"
+      },
+      "fonts/msgothic.ttc": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/msgothic.ttc",
+        "sha256": "75704a3efa6b2e1c2c5af586192cb65b945e27e89bf5fc9076c31328a726dba0"
+      },
+      "fonts/times.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/times.ttf",
+        "sha256": "8f8c93cf2d375393a1646bdea4e1d2212d985860cf53f921b84de6c4f470f8cd"
+      },
+      "fonts/cour.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/cour.ttf",
+        "sha256": "242cf58d671f12f155cae27e38d7f3ca242046534be06a60f26dd7620513eace"
+      },
+      "fonts/simsun.ttc": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/simsun.ttc",
+        "sha256": "59e540ec2eacb2d8417add67eceb2efdc8bd978aa2a0a93195db5b2805a43e6a"
+      },
+      "fonts/msyhbd.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/msyhbd.ttf",
+        "sha256": "cef037b3f0e00ab8cab78355aa339aedd426581160b30f27879803a24c988bee"
+      },
+      "fonts/noto/LICENSE": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/noto/LICENSE",
+        "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb"
+      },
+      "fonts/lucon.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/lucon.ttf",
+        "sha256": "c8dc5b8be8e14b2123be95b2122320610425dcd68e85dd81dc0785f87e87b65f"
+      },
+      "fonts/arial.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/arial.ttf",
+        "sha256": "36f3d85e761b0a36afd22ade31870da5659e4590fcf8384f350c4d8159383a22"
+      },
+      "fonts/nirmala.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/nirmala.ttf",
+        "sha256": "54e8a273bd326f994ca037c1420814a470b834623a80c2fcdc7f0661ac091ef4"
+      },
+      "fonts/source-han-sans/LICENSE.txt": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/source-han-sans/LICENSE.txt",
+        "sha256": "fcac737e761ec63dbfbdce11030a1780161920d80315edba9c8beff1c2bac5a2"
+      },
+      "fonts/liberation-fonts/LICENSE": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/liberation-fonts/LICENSE",
+        "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+      },
+      "fonts/courbd.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/courbd.ttf",
+        "sha256": "0990c274bc198b35ed28909bcb87ca10279a121f3dc3c5b8a9dabda123c1a7e6"
+      },
+      "fonts/alt/arial.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/alt/arial.ttf",
+        "sha256": "53c81ad5fb399e0ecca9ef065a4fd0392e949038947d0b74cac1d24433d999fb"
+      },
+      "fonts/malgun.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/malgun.ttf",
+        "sha256": "e006f28630a8142a929fdab0097d4d267c4003dcdac0ec3ec51ffecc8d1afcd5"
+      },
+      "fonts/msyh.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/msyh.ttf",
+        "sha256": "955e1e0dc1f8d8fdbb3cfb22a395a27b1dd24b8108930c94e2bcda216b560a6b"
+      },
+      "fonts/micross.ttf": {
+        "kind": "release-archive-member",
+        "member": "NotProton.app/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload/fonts/micross.ttf",
+        "sha256": "ea65db6e53e1d32ef73e522fe1085b3d1d0efd493d25d53e3ebc69a6b72069da"
+      },
+      "steamclient.dll": {
+        "kind": "upstream-pinned-valve-dependency",
+        "manifest_path": "app/Sources/NotProtonApp/Resources/valve-packages.manifest",
+        "package": "linux",
+        "member": "legacycompat/steamclient.dll",
+        "bytes_source": "Existing immutable SkinOS cache; reverified against v1.1.7 Valve manifest.",
+        "sha256": "e9e961c914a418b6a3c597822bdc920bdea62c842ff42de23dc306331da563f8"
+      },
+      "steamclient64.dll": {
+        "kind": "upstream-pinned-valve-dependency",
+        "manifest_path": "app/Sources/NotProtonApp/Resources/valve-packages.manifest",
+        "package": "linux",
+        "member": "steamclient64.dll",
+        "bytes_source": "Existing immutable SkinOS cache; reverified against v1.1.7 Valve manifest.",
+        "sha256": "caba4826aa3501039d095aee1843a6bfb270fb43a3ab4455b2d6733223579fee"
+      },
+      "tier0_s64.dll": {
+        "kind": "upstream-pinned-valve-dependency",
+        "manifest_path": "app/Sources/NotProtonApp/Resources/valve-packages.manifest",
+        "package": "win64",
+        "member": "tier0_s64.dll",
+        "bytes_source": "Existing immutable SkinOS cache; reverified against v1.1.7 Valve manifest.",
+        "sha256": "30f7bb8d9b86006852493c26124ba253bd9e7ffd40a8b3c7254f86a9032c3be3"
+      },
+      "vstdlib_s64.dll": {
+        "kind": "upstream-pinned-valve-dependency",
+        "manifest_path": "app/Sources/NotProtonApp/Resources/valve-packages.manifest",
+        "package": "win64",
+        "member": "vstdlib_s64.dll",
+        "bytes_source": "Existing immutable SkinOS cache; reverified against v1.1.7 Valve manifest.",
+        "sha256": "99efb4c2ad47f90c803b5ee0bd6424916b28facb9fa2568845b1b1f58a36062a"
+      },
+      "legacycompat/Steam.dll": {
+        "kind": "upstream-pinned-valve-dependency",
+        "manifest_path": "app/Sources/NotProtonApp/Resources/valve-packages.manifest",
+        "package": "linux",
+        "member": "legacycompat/Steam.dll",
+        "bytes_source": "Existing upstream NotProton cache; reverified against v1.1.7 Valve manifest.",
+        "sha256": "b2000e57123e99bbbe26aaec40cfaf09a4df93959c5148f0db571ed2e3401102"
+      }
+    }
+  },
+  "files": {
+    "steam.exe": "58413caf03cd8d39a7b387f573f2ba921a6d438c2fac2332e43bc195827af5c4",
+    "steamclient.dll": "e9e961c914a418b6a3c597822bdc920bdea62c842ff42de23dc306331da563f8",
+    "steamclient64.dll": "caba4826aa3501039d095aee1843a6bfb270fb43a3ab4455b2d6733223579fee",
+    "tier0_s64.dll": "30f7bb8d9b86006852493c26124ba253bd9e7ffd40a8b3c7254f86a9032c3be3",
+    "vstdlib_s64.dll": "99efb4c2ad47f90c803b5ee0bd6424916b28facb9fa2568845b1b1f58a36062a",
+    "lsteamclient.dll": "00727bb4b4094183826fe81c093d28ee056f1486ca21341ecb427127278ce753",
+    "lsteamclient.so": "2f4b01479d23ccb28bbb30dfda087a0cb1a2fd5053db9ed891183395e065581f",
+    "i386-windows/lsteamclient.dll": "53d0c0aa08482cab64906a910772d65d0838b92cf4f4e83b29c794368791e7d4",
+    "x86_64-windows/lsteamclient.dll": "00727bb4b4094183826fe81c093d28ee056f1486ca21341ecb427127278ce753",
+    "x86_64-unix/lsteamclient.so": "2f4b01479d23ccb28bbb30dfda087a0cb1a2fd5053db9ed891183395e065581f",
+    "aarch64-unix/lsteamclient.so": "7c542d4806a09e3b13d4f1f84b0b6e73bbb8b63691320aff6623a875aba2f642",
+    "legacycompat/Steam.dll": "b2000e57123e99bbbe26aaec40cfaf09a4df93959c5148f0db571ed2e3401102",
+    "fonts/alt/arial.ttf": "53c81ad5fb399e0ecca9ef065a4fd0392e949038947d0b74cac1d24433d999fb",
+    "fonts/arial.ttf": "36f3d85e761b0a36afd22ade31870da5659e4590fcf8384f350c4d8159383a22",
+    "fonts/arialbd.ttf": "c1110de00446b7379369de71a172e753608fad88cd3f52528d2436acb23b2bc5",
+    "fonts/cour.ttf": "242cf58d671f12f155cae27e38d7f3ca242046534be06a60f26dd7620513eace",
+    "fonts/courbd.ttf": "0990c274bc198b35ed28909bcb87ca10279a121f3dc3c5b8a9dabda123c1a7e6",
+    "fonts/georgia.ttf": "3d5f832f79e24edfd10e463f0b2135691a2b30ccdebb7261f410353438315f5f",
+    "fonts/liberation-fonts/LICENSE": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b",
+    "fonts/lucon.ttf": "c8dc5b8be8e14b2123be95b2122320610425dcd68e85dd81dc0785f87e87b65f",
+    "fonts/malgun.ttf": "e006f28630a8142a929fdab0097d4d267c4003dcdac0ec3ec51ffecc8d1afcd5",
+    "fonts/micross.ttf": "ea65db6e53e1d32ef73e522fe1085b3d1d0efd493d25d53e3ebc69a6b72069da",
+    "fonts/msgothic.ttc": "75704a3efa6b2e1c2c5af586192cb65b945e27e89bf5fc9076c31328a726dba0",
+    "fonts/msyh.ttf": "955e1e0dc1f8d8fdbb3cfb22a395a27b1dd24b8108930c94e2bcda216b560a6b",
+    "fonts/msyhbd.ttf": "cef037b3f0e00ab8cab78355aa339aedd426581160b30f27879803a24c988bee",
+    "fonts/nirmala.ttf": "54e8a273bd326f994ca037c1420814a470b834623a80c2fcdc7f0661ac091ef4",
+    "fonts/noto/LICENSE": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb",
+    "fonts/simsun.ttc": "59e540ec2eacb2d8417add67eceb2efdc8bd978aa2a0a93195db5b2805a43e6a",
+    "fonts/source-han-sans/LICENSE.txt": "fcac737e761ec63dbfbdce11030a1780161920d80315edba9c8beff1c2bac5a2",
+    "fonts/times.ttf": "8f8c93cf2d375393a1646bdea4e1d2212d985860cf53f921b84de6c4f470f8cd",
+    "fonts/ume/license.html": "88d5d5a1bf928ff316e3f80d2e665b1a3ab0f46af80ae7d1ec0046b16ea64cdb"
+  }
+}

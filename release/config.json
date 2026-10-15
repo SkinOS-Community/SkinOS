@@ -1,0 +1,6 @@
+{
+  "repository": "SkinOS-Community/SkinOS",
+  "feed_url": "https://github.com/SkinOS-Community/SkinOS/releases/latest/download/appcast.xml",
+  "public_key_file": "release/update-public-key.txt",
+  "keychain_account": "SkinOS-Community"
+}

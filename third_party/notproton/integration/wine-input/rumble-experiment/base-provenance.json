@@ -1,0 +1,14 @@
+{
+  "isolated_experiment": true,
+  "original_files_sha256": {
+    "driver.c": "a8f8fdb163344d27dac8bb2b207b57284fa1a0ef0989eee6c0b79fb72cc2f4ed",
+    "feeder.c": "81b7d00f15e2063ea06b808ccb60524d7c10b7c1b3a8ff674df5879e327bd582",
+    "consumer.c": "e5b66eee4b4fbad657f9db2ed3c318e323b66a3481e845ed3118b004cd9aae83",
+    "protocol.h": "6216775012d6346f840b657e5f31dd28d5529b0a95a322044b08d4fc718c27c0",
+    "descriptor.h": "91c95a5193d4498b2605f9b8e334b6699c1d07a32092231c7a79a28c96eedf45",
+    "adapter.h": "20cfb37025bed7ef6401c22721c32c6e534fc1d124b03fe6b76098c3cb91fc06",
+    "adapter-test.c": "1f8b82de2ddb59916d9dd79cd2abf06f06e93130c04997b9a77d494e6b2671d4",
+    "owned-path.h": "cf26a636942e8803927384e8b00268d4c42c33db05e99000fc4e6529ca8c21e8",
+    "LICENSE.Wine": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c"
+  }
+}
