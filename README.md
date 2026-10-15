@@ -18,6 +18,8 @@ as a game launcher.
 - Explicit macOS/Windows selection before downloading, with macOS preselected
   when available. The chosen version is retained across pauses and updates.
 - Searchable Steam download regions with preferred servers and fallbacks.
+- Automatic cleanup of obsolete download staging after a verified completed
+  installation, preserving files needed by paused or unfinished transfers.
 - Native macOS games and Windows games through pinned NotProton integration
   with a separately installed CrossOver or CrossOver Preview.
 - Per-game launch arguments and compatibility settings, launch/stop controls,

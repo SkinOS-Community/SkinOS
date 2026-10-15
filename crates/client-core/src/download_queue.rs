@@ -25,6 +25,13 @@ pub trait DownloadExecutor: Send + Sync + 'static {
     fn validate(&self, job: &DownloadJob) -> Result<InstallPlatform>;
     fn can_start(&self, job: &DownloadJob) -> bool;
     fn resource_key(&self, job: &DownloadJob) -> Result<String>;
+    fn cleanup_completed(
+        &self,
+        _job: DownloadJob,
+        _events: mpsc::UnboundedSender<Event>,
+    ) -> DownloadFuture {
+        Box::pin(async { Ok(()) })
+    }
     fn run(
         &self,
         job: DownloadJob,
@@ -211,6 +218,44 @@ struct SavedQueue {
     max_concurrent: usize,
     revision: u64,
     items: Vec<Intent>,
+}
+
+/// All persisted account intents participate in the cache reservation. An older
+/// paused/cancelled/failed attempt must not lose resumable data during another
+/// account's cleanup. Malformed queue state fails closed.
+pub(crate) fn completed_cache_cleanup_allowed(
+    data_root: &std::path::Path,
+    appid: u32,
+) -> Result<bool> {
+    let directory = data_root.join("download-queues");
+    ensure!(
+        !directory.is_symlink(),
+        "Download queue directory cannot be a symlink"
+    );
+    let mut completed = false;
+    for entry in std::fs::read_dir(directory).context("Cannot verify download queue states")? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().is_none_or(|extension| extension != "json") {
+            continue;
+        }
+        let metadata = std::fs::symlink_metadata(&path)?;
+        ensure!(
+            metadata.is_file()
+                && !metadata.file_type().is_symlink()
+                && metadata.len() <= 4 * 1024 * 1024,
+            "Cannot verify download queue file"
+        );
+        let queue: SavedQueue = serde_json::from_slice(&std::fs::read(&path)?)
+            .context("Cannot verify download queue contents")?;
+        for item in queue.items.iter().filter(|item| item.appid == appid) {
+            if item.state != DownloadState::Completed {
+                return Ok(false);
+            }
+            completed = true;
+        }
+    }
+    Ok(completed)
 }
 enum Command {
     Request(Request),
@@ -780,11 +825,55 @@ impl Actor {
             }
         }
     }
+    async fn cleanup_completed(&self, appid: u32, request_id: Option<&str>) -> Result<()> {
+        ensure!(
+            !self.active.contains_key(&appid),
+            "Загрузка ещё выполняется"
+        );
+        let row = self
+            .items
+            .iter()
+            .find(|row| row.appid == appid)
+            .context("Игра отсутствует в очереди")?;
+        ensure!(
+            row.state == DownloadState::Completed,
+            "Очистка доступна только после успешной установки"
+        );
+        // A failed save must never turn a transient in-memory success into
+        // permission to delete resumable on-disk state.
+        self.persist()?;
+        let mut job = row.job(&self.steamid);
+        job.request_id = request_id.map(str::to_owned);
+        self.executor
+            .cleanup_completed(job, self.events.clone())
+            .await
+    }
+    async fn cleanup_completed_best_effort(&self, appid: u32) {
+        if let Err(error) = self.cleanup_completed(appid, None).await {
+            let _ = self.events.send(Event::new(
+                None,
+                "download_cache_cleanup_warning",
+                json!({"appid":appid,"message":error.to_string()}),
+            ));
+        }
+    }
     async fn run(mut self, mut commands: mpsc::UnboundedReceiver<Command>) {
         let (sink, mut incoming) = mpsc::unbounded_channel();
         let mut tick = tokio::time::interval(Duration::from_millis(250));
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         self.snapshot(None);
+        // Catch up only explicitly completed jobs after an upgrade/restart.
+        // No worker starts and no new queue command is accepted until this
+        // completed-state reservation is released.
+        let completed: Vec<u32> = self
+            .items
+            .iter()
+            .filter(|row| row.state == DownloadState::Completed)
+            .map(|row| row.appid)
+            .collect();
+        for appid in completed {
+            self.cleanup_completed_best_effort(appid).await;
+        }
         loop {
             self.start_ready(&sink);
             if self.stopping && self.active.is_empty() {
@@ -794,6 +883,14 @@ impl Actor {
             tokio::select! {
                 command=commands.recv(),if !self.stopping=>match command {
                     Some(Command::Request(request))=>{
+                        if request.command == "cleanup_download_cache" {
+                            let result = match request.payload["appid"].as_u64().and_then(|id| u32::try_from(id).ok()).filter(|id| *id > 0) {
+                                Some(appid) => self.cleanup_completed(appid, Some(&request.id)).await,
+                                None => Err(anyhow::anyhow!("Invalid AppID")),
+                            };
+                            if let Err(error) = result { let _=self.events.send(Event::error(Some(&request.id), "download_cache_cleanup_failed", &error.to_string(), true)); }
+                            continue;
+                        }
                         if matches!(request.command.as_str(), "pause_download" | "cancel_download" | "remove_download")
                             && let Some(appid)=request.payload["appid"].as_u64().and_then(|value|u32::try_from(value).ok()) {
                             self.resume_after_connection.remove(&appid);
@@ -909,6 +1006,13 @@ impl Actor {
                     self.snapshot(None);
                 }
                 if succeeded {
+                    if self
+                        .items
+                        .iter()
+                        .any(|row| row.appid == appid && row.state == DownloadState::Completed)
+                    {
+                        self.cleanup_completed_best_effort(appid).await;
+                    }
                     let _ = self.events.send(Event::new(
                         request_id.as_deref(),
                         "operation_complete",
@@ -948,7 +1052,7 @@ mod tests {
     use super::*;
     use std::sync::{
         Mutex,
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     };
     use tokio::sync::Semaphore;
     const ACCOUNT: &str = "76561198000000001";
@@ -959,6 +1063,8 @@ mod tests {
         started: mpsc::UnboundedSender<u32>,
         gates: Arc<Mutex<HashMap<u32, Arc<Semaphore>>>>,
         completed: Arc<Mutex<Vec<u32>>>,
+        cleanup_calls: Arc<Mutex<Vec<u32>>>,
+        cleanup_fails: Arc<AtomicBool>,
         resources: HashMap<u32, String>,
     }
     impl DownloadExecutor for Mock {
@@ -975,6 +1081,22 @@ mod tests {
                 .get(&job.appid)
                 .cloned()
                 .unwrap_or_else(|| job.appid.to_string()))
+        }
+        fn cleanup_completed(
+            &self,
+            job: DownloadJob,
+            _: mpsc::UnboundedSender<Event>,
+        ) -> DownloadFuture {
+            let calls = self.cleanup_calls.clone();
+            let fails = self.cleanup_fails.clone();
+            Box::pin(async move {
+                calls.lock().unwrap().push(job.appid);
+                ensure!(
+                    !fails.load(Ordering::SeqCst),
+                    "fixture cache cleanup failure"
+                );
+                Ok(())
+            })
         }
         fn run(
             &self,
@@ -1039,6 +1161,8 @@ mod tests {
                 started,
                 gates: Default::default(),
                 completed: Default::default(),
+                cleanup_calls: Default::default(),
+                cleanup_fails: Default::default(),
                 resources,
             }),
             rx,
@@ -1343,6 +1467,122 @@ mod tests {
         assert_eq!(actor.items[0].state, DownloadState::Cancelled);
         assert_eq!(actor.items[1].state, DownloadState::Paused);
         assert_eq!(actor.items[0].downloaded_bytes, 12);
+    }
+    #[test]
+    fn cleanup_gate_checks_all_accounts_and_preserves_every_resumable_state() {
+        let root = tempfile::tempdir().unwrap();
+        let queues = root.path().join("download-queues");
+        std::fs::create_dir(&queues).unwrap();
+        let write = |name: &str, appid: u32, state: DownloadState| {
+            std::fs::write(
+                queues.join(name),
+                serde_json::to_vec(&json!({
+                    "steamid":ACCOUNT,"max_concurrent":2,"revision":1,
+                    "items":[{"appid":appid,"is_update":false,"state":state}]
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+        };
+        assert!(!completed_cache_cleanup_allowed(root.path(), 1).unwrap());
+        write("first.json", 1, DownloadState::Completed);
+        assert!(completed_cache_cleanup_allowed(root.path(), 1).unwrap());
+        for state in [
+            DownloadState::Queued,
+            DownloadState::Downloading,
+            DownloadState::Preparing,
+            DownloadState::Verifying,
+            DownloadState::Installing,
+            DownloadState::Pausing,
+            DownloadState::Paused,
+            DownloadState::Cancelling,
+            DownloadState::Cancelled,
+            DownloadState::Failed,
+        ] {
+            write("second.json", 1, state);
+            assert!(!completed_cache_cleanup_allowed(root.path(), 1).unwrap());
+        }
+        write("second.json", 2, DownloadState::Paused);
+        assert!(completed_cache_cleanup_allowed(root.path(), 1).unwrap());
+        std::fs::write(queues.join("second.json"), b"malformed").unwrap();
+        assert!(completed_cache_cleanup_allowed(root.path(), 1).is_err());
+    }
+    #[tokio::test]
+    async fn cleanup_requires_completed_state_and_failure_keeps_install_successful() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("queue.json");
+        let (executor, mut started_rx) = mock(ACCOUNT, HashMap::new());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let mut actor =
+            Actor::load(ACCOUNT.into(), path.clone(), executor.clone(), tx.clone()).unwrap();
+        for state in [
+            DownloadState::Paused,
+            DownloadState::Failed,
+            DownloadState::Cancelled,
+            DownloadState::Queued,
+            DownloadState::Downloading,
+        ] {
+            actor.items = vec![DownloadItem::new(1, false, state)];
+            assert!(actor.cleanup_completed(1, None).await.is_err());
+        }
+        assert!(executor.cleanup_calls.lock().unwrap().is_empty());
+        actor.items.clear();
+        actor.persist().unwrap();
+        drop(actor);
+        executor.cleanup_fails.store(true, Ordering::SeqCst);
+        let queue =
+            DownloadQueue::start(ACCOUNT.into(), path.clone(), executor.clone(), tx).unwrap();
+        send(&queue, "install", "install_game", 1);
+        assert_eq!(started(&mut started_rx).await, 1);
+        finish(&executor, 1);
+        tokio::time::timeout(Duration::from_secs(3), async {
+            loop {
+                let event = rx.recv().await.unwrap();
+                if event.event == "operation_complete" {
+                    break;
+                }
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(*executor.cleanup_calls.lock().unwrap(), [1]);
+        let saved: SavedQueue = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        assert_eq!(saved.items[0].state, DownloadState::Completed);
+        queue.shutdown().await;
+    }
+    #[tokio::test]
+    async fn startup_cleanup_targets_only_previously_completed_rows() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("queue.json");
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&json!({
+                "steamid":ACCOUNT,"max_concurrent":2,"revision":1,"items":[
+                    {"appid":1,"is_update":false,"state":"completed"},
+                    {"appid":2,"is_update":false,"state":"paused"},
+                    {"appid":3,"is_update":false,"state":"failed"},
+                    {"appid":4,"is_update":false,"state":"cancelled"}
+                ]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let (executor, _) = mock(ACCOUNT, HashMap::new());
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let queue = DownloadQueue::start(ACCOUNT.into(), path, executor.clone(), tx).unwrap();
+        // A correlated snapshot is handled only after startup cleanup finishes.
+        send(&queue, "ready", "get_download_queue", 1);
+        tokio::time::timeout(Duration::from_secs(3), async {
+            while let Some(event) = rx.recv().await {
+                if event.id.as_deref() == Some("ready") {
+                    break;
+                }
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(*executor.cleanup_calls.lock().unwrap(), [1]);
+        queue.shutdown().await;
     }
     #[test]
     fn explicit_platform_survives_queue_restart_and_resume() {

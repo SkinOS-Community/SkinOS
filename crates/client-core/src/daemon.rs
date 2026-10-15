@@ -339,7 +339,7 @@ pub async fn serve_with_adapter(adapter: Arc<dyn OperationAdapter>) -> Result<()
                             operations.spawn(relay_operation(future,operation_rx,worker_events.clone(),epochs.account,id));
                         } else {emit(&events,Event::error(Some(&id),"not_authenticated","Sign in before opening Steam pages",true));}
                     }
-                    "install_game" | "update_game" | "get_download_queue" | "pause_download" | "resume_download" | "cancel_download" | "remove_download" | "move_download" | "set_download_limit" => {
+                    "install_game" | "update_game" | "get_download_queue" | "pause_download" | "resume_download" | "cancel_download" | "remove_download" | "move_download" | "set_download_limit" | "cleanup_download_cache" => {
                         if let Some(queue)=&downloads {
                             if let Err(error)=queue.request(request){emit(&events,Event::error(Some(&id),"download_queue_failed",&error.to_string(),true));}
                         }else{emit(&events,Event::error(Some(&id),"not_authenticated","Войдите в аккаунт перед управлением загрузками",true));}

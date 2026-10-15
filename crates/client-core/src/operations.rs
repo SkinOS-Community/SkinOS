@@ -119,6 +119,60 @@ impl crate::download_queue::DownloadExecutor for MvpDownloader {
             .to_string_lossy()
             .into_owned())
     }
+    fn cleanup_completed(
+        &self,
+        job: crate::download_queue::DownloadJob,
+        events: mpsc::UnboundedSender<Event>,
+    ) -> crate::download_queue::DownloadFuture {
+        let account = self.context.steamid.clone();
+        let apps = self.apps.clone();
+        let destinations = self.destinations.clone();
+        Box::pin(async move {
+            ensure!(job.steamid == account, "Download account changed");
+            let appid = job.appid;
+            let outcome = tokio::task::spawn_blocking(
+                move || -> Result<Option<skinos_downloader::CacheCleanup>> {
+                    if !apps
+                        .lock()
+                        .map_err(|_| anyhow::anyhow!("Operation lock unavailable"))?
+                        .insert(appid)
+                    {
+                        return Ok(None);
+                    }
+                    let _app = AppOperation { appid, apps };
+                    let config = settings::load()?;
+                    let installed =
+                        skinos_downloader::library::read_appmanifest(&config.steamapps_dir, appid)?;
+                    let _destination =
+                        DestinationOperation::acquire(destinations, installed.install_dir)?;
+                    if !crate::download_queue::completed_cache_cleanup_allowed(
+                        &session::data_dir()?,
+                        appid,
+                    )? {
+                        return Ok(None);
+                    }
+                    skinos_downloader::cleanup_completed_download_cache(
+                        &config.steamapps_dir,
+                        appid,
+                    )
+                    .map(Some)
+                },
+            )
+            .await??;
+            let payload = match outcome {
+                Some(outcome) => serde_json::to_value(outcome)?,
+                None => {
+                    json!({"appid":appid,"skipped":true,"removed_directories":0,"removed_bytes":0})
+                }
+            };
+            let _ = events.send(Event::new(
+                job.request_id.as_deref(),
+                "download_cache_cleaned",
+                payload,
+            ));
+            Ok(())
+        })
+    }
     fn run(
         &self,
         job: crate::download_queue::DownloadJob,

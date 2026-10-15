@@ -1,5 +1,7 @@
 //! SteamPipe downloads over an existing authenticated Steam CM connection.
+mod cache_cleanup;
 mod content;
+pub use cache_cleanup::{CacheCleanup, cleanup_completed_download_cache};
 mod control;
 pub use control::{InstallControl, InstallInterrupted};
 pub mod library;
