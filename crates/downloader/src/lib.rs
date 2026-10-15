@@ -24,6 +24,18 @@ use tokio::sync::Mutex;
 pub type SharedConnection = Arc<Mutex<Connection>>;
 pub type ProgressCallback = Arc<dyn Fn(InstallProgress) + Send + Sync>;
 
+/// Refresh one app's launch and Cloud settings over the current authenticated
+/// CM connection. This does not acquire a license or change installed files.
+pub async fn application_metadata(
+    connection: &SharedConnection,
+    appid: u32,
+) -> Result<steam_cm_protocol::pics::AppCatalogInfo> {
+    ensure!(appid != 0, "Invalid application metadata identity");
+    let appinfo = network::app_info(connection, appid).await?;
+    steam_cm_protocol::pics::parse_app_info_kv(appid, &appinfo)
+        .context("Steam returned incomplete application metadata")
+}
+
 #[derive(Debug, Clone)]
 pub struct InstallRequest {
     pub appid: u32,

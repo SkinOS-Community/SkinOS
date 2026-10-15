@@ -405,11 +405,15 @@ fn launch_entry<'a>(
     dir: &Path,
     windows: bool,
 ) -> Result<&'a crate::model::LaunchEntry> {
+    ensure!(
+        windows || game.launch_metadata_known,
+        "Данные запуска и сохранений игры устарели. Обновите библиотеку перед запуском macOS-версии"
+    );
     game.launch
         .iter()
         .filter(|e| is_default_public(e))
         .filter(|e| if windows { is_windows(e) } else { is_macos(e) })
-        .find(|e| {
+        .filter(|e| {
             relative_game_path(dir, &e.executable).is_ok_and(|p| {
                 if windows {
                     p.is_file()
@@ -418,6 +422,9 @@ fn launch_entry<'a>(
                 }
             })
         })
+        // PICS option numbers are stable identifiers, not array positions.
+        // Old library caches omit them; retain their existing order until refresh.
+        .min_by_key(|entry| (entry.id.is_none(), entry.id.unwrap_or_default()))
         .with_context(|| {
             if windows {
                 "Не найдены установленные Windows-файлы. Установите Windows-версию через NotProton"
@@ -425,6 +432,40 @@ fn launch_entry<'a>(
                 "Не найдены установленные macOS-файлы игры"
             }
         })
+}
+
+fn game_with_fresh_launch_metadata(
+    game: &Game,
+    metadata: steam_cm_protocol::pics::AppCatalogInfo,
+) -> Result<Game> {
+    ensure!(
+        metadata.appid == game.appid,
+        "Steam returned launch metadata for another game"
+    );
+    ensure!(
+        !metadata.name.trim().is_empty(),
+        "Steam returned launch metadata without a game identity"
+    );
+    let mut refreshed = game.clone();
+    refreshed.name = metadata.name;
+    refreshed.installdir = metadata.installdir;
+    refreshed.launch = metadata
+        .launch
+        .into_iter()
+        .map(|entry| crate::model::LaunchEntry {
+            id: entry.id,
+            executable: entry.executable,
+            arguments: entry.arguments,
+            workingdir: entry.workingdir,
+            launch_type: entry.launch_type,
+            oslist: entry.oslist,
+            osarch: entry.osarch,
+            betakey: entry.betakey,
+        })
+        .collect();
+    refreshed.cloud_config = metadata.cloud_config;
+    refreshed.launch_metadata_known = true;
+    Ok(refreshed)
 }
 
 fn launch_arguments(
@@ -794,6 +835,15 @@ async fn launch(
         record.appid == game.appid,
         "Installed game identity mismatch"
     );
+    let refreshed;
+    let game = if !windows && !game.launch_metadata_known {
+        let metadata = skinos_downloader::application_metadata(&context.connection, game.appid)
+            .await.context("Не удалось обновить данные запуска и сохранений. Обновите библиотеку и повторите запуск")?;
+        refreshed = game_with_fresh_launch_metadata(game, metadata)?;
+        &refreshed
+    } else {
+        game
+    };
     let entry = launch_entry(game, destination, windows)?;
     let executable = relative_game_path(destination, &entry.executable)?;
     let working_dir = match entry.workingdir.as_deref().filter(|v| !v.is_empty()) {
@@ -875,6 +925,7 @@ async fn launch(
     let mut launch = json!({"protocol_version":1,"command":"launch","appid":game.appid,"steamid":context.steamid,
         "account_name":account.account_name,"refresh_token":token.expose_secret(),"install_dir":destination,
         "executable":executable,"arguments":arguments,"working_dir":working_dir,
+        "launch_option_id":entry.id,"cloud_config":game.cloud_config,
         "name":game.name,"build_id":record.build_id,"depots":record.depots,"compatibility":compatibility,"persona_state":initial_persona});
     launch["input_diagnostic"] = json!(input_diagnostic);
     // A requested diagnostic temporarily enables the same input path without
@@ -1039,6 +1090,7 @@ mod tests {
     }
     fn entry(exe: &str, os: &str) -> crate::model::LaunchEntry {
         crate::model::LaunchEntry {
+            id: None,
             executable: exe.into(),
             arguments: Some("--base 'a b'".into()),
             workingdir: None,
@@ -1050,7 +1102,93 @@ mod tests {
     }
     fn game(launch: Vec<crate::model::LaunchEntry>) -> Game {
         serde_json::from_value(json!({"appid":42,"name":"Game","playtime_minutes":0,"last_played":0,"app_type":"game",
-            "installdir":"Game","installed_dir":null,"macos_supported":true,"windows_supported":true,"header_url":"","launch":launch})).unwrap()
+            "installdir":"Game","installed_dir":null,"macos_supported":true,"windows_supported":true,"header_url":"","launch_metadata_known":true,"launch":launch})).unwrap()
+    }
+    #[test]
+    fn launch_selection_uses_original_numeric_id_after_platform_and_file_checks() {
+        let dir = tempfile::tempdir().unwrap();
+        for filename in ["high.app", "low.app", "private.app", "windows.exe"] {
+            std::fs::write(dir.path().join(filename), b"fixture").unwrap();
+        }
+        let mut high = entry("high.app", "macos");
+        high.id = Some(19);
+        let mut low = entry("low.app", "macos");
+        low.id = Some(2);
+        let mut missing = entry("missing.app", "macos");
+        missing.id = Some(0);
+        let mut private = entry("private.app", "macos");
+        private.id = Some(1);
+        private.betakey = Some("private".into());
+        let mut windows = entry("windows.exe", "windows");
+        windows.id = Some(0);
+        let g = game(vec![high, private, missing, windows, low]);
+        assert_eq!(launch_entry(&g, dir.path(), false).unwrap().id, Some(2));
+        assert_eq!(launch_entry(&g, dir.path(), true).unwrap().id, Some(0));
+    }
+
+    #[test]
+    fn legacy_launch_selection_keeps_first_matching_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("first"), b"fixture").unwrap();
+        std::fs::write(dir.path().join("second"), b"fixture").unwrap();
+        let g = game(vec![entry("first", "macos"), entry("second", "macos")]);
+        assert_eq!(
+            launch_entry(&g, dir.path(), false).unwrap().executable,
+            "first"
+        );
+    }
+
+    #[test]
+    fn native_launch_rejects_legacy_unknown_cloud_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("game"), b"fixture").unwrap();
+        let mut g = game(vec![entry("game", "macos")]);
+        g.launch_metadata_known = false;
+        assert!(launch_entry(&g, dir.path(), false).is_err());
+    }
+
+    #[test]
+    fn fresh_single_app_metadata_resolves_legacy_unknown_and_known_no_cloud() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("game"), b"fixture").unwrap();
+        let mut legacy = game(vec![entry("old", "macos")]);
+        legacy.launch_metadata_known = false;
+        legacy.playtime_minutes = 123;
+        let metadata = || steam_cm_protocol::pics::AppCatalogInfo {
+            appid: legacy.appid,
+            name: "Fresh identity".into(),
+            img_icon_url: None,
+            app_type: Some("game".into()),
+            installdir: Some("Fresh folder".into()),
+            launch: vec![steam_cm_protocol::LaunchEntry {
+                id: Some(19),
+                executable: "game".into(),
+                oslist: Some("macos".into()),
+                ..Default::default()
+            }],
+            cloud_config: None,
+        };
+        let refreshed = game_with_fresh_launch_metadata(&legacy, metadata()).unwrap();
+        assert!(refreshed.launch_metadata_known);
+        assert!(refreshed.cloud_config.is_none(), "known absence is valid");
+        assert_eq!(refreshed.name, "Fresh identity");
+        assert_eq!(refreshed.playtime_minutes, 123);
+        assert_eq!(
+            launch_entry(&refreshed, dir.path(), false).unwrap().id,
+            Some(19)
+        );
+        let mut wrong = metadata();
+        wrong.appid += 1;
+        assert!(game_with_fresh_launch_metadata(&legacy, wrong).is_err());
+        let mut with_cloud = metadata();
+        with_cloud.cloud_config =
+            Some(json!({"savefiles":{"0":{"root":"MacDocuments","path":"Fresh identity"}}}));
+        assert!(
+            game_with_fresh_launch_metadata(&legacy, with_cloud)
+                .unwrap()
+                .cloud_config
+                .is_some()
+        );
     }
     #[test]
     fn detects_actual_installed_platform_and_ignores_beta_tools() {

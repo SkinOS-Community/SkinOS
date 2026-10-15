@@ -14,6 +14,10 @@ use std::time::{Duration, Instant};
 
 #[path = "worker/game_input_session.rs"]
 mod game_input_session;
+#[path = "worker/launch_selection.rs"]
+mod launch_selection;
+#[path = "worker/native_process.rs"]
+mod native_process;
 #[path = "worker/rumble_feedback_session.rs"]
 mod rumble_feedback_session;
 #[path = "worker/rumble_fixture_session.rs"]
@@ -919,7 +923,26 @@ fn launch_game(
             let count = launch_options(apps, appid, options.as_mut_ptr(), options.len() as i32);
             let owned = subscribed(client_user, appid);
             if owned && (count > 0 || !request["compatibility"].is_null()) {
-                break if count > 0 { options[0] as u32 } else { 0 };
+                let count =
+                    usize::try_from(count.max(0)).map_err(|_| "Invalid launch option count")?;
+                let available = options
+                    .get(..count)
+                    .ok_or("Runtime launch option list exceeds its buffer")?;
+                let requested = request
+                    .get("launch_option_id")
+                    .filter(|value| !value.is_null())
+                    .map(|value| {
+                        value
+                            .as_u64()
+                            .and_then(|id| u32::try_from(id).ok())
+                            .ok_or("Invalid selected launch option ID")
+                    })
+                    .transpose()?;
+                break launch_selection::select(
+                    requested,
+                    available,
+                    !request["compatibility"].is_null(),
+                )?;
             }
             if rerequests < 3 && Instant::now() > next_request {
                 event(
@@ -1001,10 +1024,29 @@ fn launch_game(
         let mut launch_result = false;
         let mut stop_attempt = None;
         let mut tracked: Option<TrackedGameProcess> = None;
+        let script = std::env::var("SKINOS_NATIVE_TARGET_KIND").as_deref() == Ok("script");
+        let mut script_tracker: Option<native_process::ScriptTracker> = None;
         let mut persona = runtime.controls.persona.load(Ordering::SeqCst);
         apply_presence(runtime, persona, true)?;
         loop {
             refresh_presence(runtime, &mut persona)?;
+            if script
+                && script_tracker.is_none()
+                && let Some((pid, group, started)) = native_launcher_identity()?
+            {
+                script_tracker = Some(native_process::ScriptTracker::capture(
+                    pid,
+                    group,
+                    u128::from(started),
+                    Path::new(
+                        request["install_dir"]
+                            .as_str()
+                            .ok_or("Installation missing")?,
+                    ),
+                    appid,
+                    runtime.state,
+                )?);
+            }
             if seen_running
                 && runtime.controls.stop.load(Ordering::SeqCst)
                 && let Some(process) = tracked.as_ref()
@@ -1058,19 +1100,29 @@ fn launch_game(
             }
             let active = running(client_user, &gameid);
             if active && launch_result && !seen_running {
-                let process = verify_game_process()?;
-                let pid = process.pid;
-                tracked = Some(process);
-                if !running(client_user, &gameid) {
-                    return Err("Game exited during SDK verification".into());
+                let candidate = if script {
+                    script_tracker
+                        .as_ref()
+                        .map(|tracker| tracker.find_game())
+                        .transpose()?
+                        .flatten()
+                } else {
+                    Some(verify_game_process()?)
+                };
+                if let Some(process) = candidate {
+                    let pid = process.pid;
+                    tracked = Some(process);
+                    if !running(client_user, &gameid) {
+                        return Err("Game exited during SDK verification".into());
+                    }
+                    seen_running = true;
+                    event(
+                        "game_running",
+                        true,
+                        json!({"appid":appid,"steamid":steamid.to_string(),"pid":pid}),
+                    );
+                    live_status(appid, "running", Some(steamid), None);
                 }
-                seen_running = true;
-                event(
-                    "game_running",
-                    true,
-                    json!({"appid":appid,"steamid":steamid.to_string(),"pid":pid}),
-                );
-                live_status(appid, "running", Some(steamid), None);
             }
             if seen_running && !active {
                 live_status(appid, "exited", Some(steamid), None);
@@ -2806,6 +2858,34 @@ fn find_compat_game(
     Ok(None)
 }
 
+fn native_launcher_identity() -> Result<Option<(i32, i32, u64)>, String> {
+    unsafe {
+        let pointer = dlsym((-2_isize) as *mut c_void, c"skinos_last_game_pid".as_ptr());
+        if pointer.is_null() {
+            return Err("Confined native launch adapter is unavailable".into());
+        }
+        let function: unsafe extern "C" fn() -> i32 = std::mem::transmute(pointer);
+        let pid = function();
+        if pid <= 0 {
+            return Ok(None);
+        }
+        let group = dlsym(
+            (-2_isize) as *mut c_void,
+            c"skinos_last_game_group".as_ptr(),
+        );
+        let started = dlsym(
+            (-2_isize) as *mut c_void,
+            c"skinos_last_game_started_microseconds".as_ptr(),
+        );
+        if group.is_null() || started.is_null() {
+            return Err("Native launch identity exports are missing".into());
+        }
+        let group: unsafe extern "C" fn() -> i32 = std::mem::transmute(group);
+        let started: unsafe extern "C" fn() -> u64 = std::mem::transmute(started);
+        Ok(Some((pid, group(), started())))
+    }
+}
+
 fn verify_game_process() -> Result<TrackedGameProcess, String> {
     unsafe {
         let root = (-2_isize) as *mut c_void;
@@ -3178,15 +3258,39 @@ fn verify_sdk(
     steamid: u64,
 ) -> Result<(), String> {
     use std::process::{Command, Stdio};
-    let executable = Path::new(request["executable"].as_str().ok_or("Executable missing")?);
-    let sdk = if executable.is_dir() {
-        executable.join("Contents/MacOS/libsteam_api.dylib")
-    } else {
-        executable
-            .parent()
-            .ok_or("Executable parent missing")?
-            .join("libsteam_api.dylib")
+    let sdk = match std::env::var_os("SKINOS_NATIVE_SDK_PATH") {
+        Some(path) => std::path::PathBuf::from(path),
+        None => {
+            event(
+                "sdk_probe_skipped",
+                true,
+                json!({"reason":std::env::var("SKINOS_NATIVE_SDK_PROBE_REASON").unwrap_or_else(|_| "missing".into())}),
+            );
+            return Ok(());
+        }
     };
+    let install = std::fs::canonicalize(
+        request["install_dir"]
+            .as_str()
+            .ok_or("Installation missing")?,
+    )
+    .map_err(|error| error.to_string())?;
+    let sdk = sdk.canonicalize().map_err(|error| error.to_string())?;
+    if !sdk.starts_with(install)
+        || sdk
+            .file_name()
+            .is_none_or(|name| name != "libsteam_api.dylib")
+    {
+        return Err("Steamworks library escapes selected installation".into());
+    }
+    if std::env::var("SKINOS_NATIVE_SDK_PROBE_SUPPORTED").as_deref() != Ok("1") {
+        event(
+            "sdk_probe_skipped",
+            true,
+            json!({"reason":"sdk_architecture_not_supported_by_arm64_probe"}),
+        );
+        return Ok(());
+    }
     let stderr = std::fs::File::create(runtime.state.join("sdk-probe.stderr.log"))
         .map_err(|e| e.to_string())?;
     let mut command = Command::new(runtime.state.join("skinos-sdk-probe"));

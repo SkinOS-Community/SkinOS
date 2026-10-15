@@ -14,6 +14,8 @@ mod input_focus;
 mod input_readiness;
 mod input_settings;
 mod installation;
+mod native_launch;
+mod native_lock_files;
 mod profile;
 mod runtime_bundle;
 mod wine_input_output;
@@ -122,6 +124,36 @@ fn main() -> ExitCode {
 fn run(args: &[std::ffi::OsString]) -> Result<()> {
     if args
         .first()
+        .is_some_and(|arg| arg == "inspect-native-launch")
+    {
+        use std::io::Read;
+        let mut bytes = Vec::new();
+        std::io::stdin()
+            .lock()
+            .take(65537)
+            .read_to_end(&mut bytes)
+            .map_err(|error| error.to_string())?;
+        if bytes.len() > 65536 {
+            return Err("Launch description exceeds protocol limit".into());
+        }
+        let request: Value =
+            serde_json::from_slice(&bytes).map_err(|_| "Invalid launch description")?;
+        let plan = native_launch::NativeLaunchPlan::from_request(&request)?;
+        let save_roots = installation::native_save_roots(&request)?;
+        println!(
+            "{}",
+            serde_json::json!({
+                "kind":plan.kind,"target":plan.target,"executable":plan.executable,
+                "working_directory":plan.cwd,"interpreter":plan.interpreter,
+                "architectures":plan.target_architectures,"sdk":plan.sdk,
+                "sdk_probe_reason":plan.sdk_probe_reason,"save_roots":save_roots,
+                "game_started":false,"directories_created":false
+            })
+        );
+        return Ok(());
+    }
+    if args
+        .first()
         .is_some_and(|arg| arg == "--prepare-bundled-runtime")
     {
         if args.len() != 1 {
@@ -205,11 +237,16 @@ fn run(args: &[std::ffi::OsString]) -> Result<()> {
         .filter(|v| !v.is_null())
         .map(|value| serde_json::from_value(value.clone()).map_err(|e| e.to_string()))
         .transpose()?;
+    let native_plan = initial_command
+        .as_ref()
+        .filter(|(_, request)| request["command"] == "launch" && compatibility.is_none())
+        .map(|(_, request)| native_launch::NativeLaunchPlan::from_request(request))
+        .transpose()?;
     let game_data = initial_command
         .as_ref()
-        .map(|(_, request)| installation::native_save_root(request))
+        .map(|(_, request)| installation::prepare_native_save_roots(request))
         .transpose()?
-        .flatten();
+        .unwrap_or_default();
     let runtime = runtime.map(Ok).unwrap_or_else(owned_runtime)?;
     if !cfg!(target_arch = "aarch64") {
         return Err("The current dynamic adapter is audited for arm64 only.".into());
@@ -386,7 +423,7 @@ fn run(args: &[std::ffi::OsString]) -> Result<()> {
             &mut write_paths,
         );
     }
-    if let Some(path) = &game_data {
+    for path in &game_data {
         grant(path.clone(), "SAVE_READ", &mut read_paths);
         grant(path.clone(), "SAVE_WRITE", &mut write_paths);
     }
@@ -435,6 +472,38 @@ fn run(args: &[std::ffi::OsString]) -> Result<()> {
         // The compatibility runner is launched directly; it never hands off to Steam.app.
         profile.push_str("\n(deny process-exec (literal \"/usr/bin/open\"))\n");
     }
+    if let Some(plan) = &native_plan {
+        read_paths.push(native_lock_files::SOURCE2_LOCK_FILES.into());
+        write_paths.push(native_lock_files::SOURCE2_LOCK_FILES.into());
+        // A script uses its declared interpreter and a small set of system
+        // path/platform utilities. Every grant names one executable, never a
+        // general bin directory or a path supplied by launch arguments.
+        let mut tools = Vec::new();
+        if let Some(interpreter) = &plan.interpreter {
+            tools.push(interpreter.clone());
+            tools.extend(
+                ["/usr/bin/basename", "/usr/bin/dirname", "/usr/bin/uname"].map(PathBuf::from),
+            );
+        }
+        for path in tools {
+            let key = format!("NATIVE_TOOL_{}", parameters.len());
+            read_paths.push(format!("(literal (param \"{key}\"))"));
+            exec_paths.push(format!("(literal (param \"{key}\"))"));
+            parameters.push((key, path));
+        }
+        if plan.kind == "script"
+            || plan
+                .target_architectures
+                .iter()
+                .any(|arch| arch == "x86_64")
+        {
+            // Rosetta's system runtime is outside /System/Library. Intel game
+            // executables require this read even though no user-data access is needed.
+            read_paths
+                .push("(literal \"/Library/Apple/usr/libexec/oah/libRosettaRuntime\")".into());
+        }
+        profile.push_str("\n(deny process-exec (literal \"/usr/bin/open\"))\n");
+    }
     profile = profile
         .replace("; SKINOS_EXTRA_READ", &read_paths.join(" "))
         .replace("; SKINOS_EXTRA_WRITE", &write_paths.join(" "))
@@ -444,9 +513,7 @@ fn run(args: &[std::ffi::OsString]) -> Result<()> {
     for (name, path) in parameters {
         command.arg("-D").arg(format!("{name}={}", path.display()));
     }
-    if let Some(path) = &game_data {
-        command.env("SKINOS_GAME_DATA_ROOT", path);
-    }
+    command.env_remove("SKINOS_GAME_DATA_ROOT");
     command
         .arg("-D")
         .arg(format!("STATE_ROOT={}", state.display()))
@@ -522,6 +589,12 @@ fn run(args: &[std::ffi::OsString]) -> Result<()> {
                     .as_str()
                     .ok_or("Missing working directory")?,
             );
+        }
+    }
+    if let Some(plan) = &native_plan {
+        plan.configure(&mut command);
+        if plan.kind == "script" {
+            command.env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin");
         }
     }
     if let Some(profile) = &account_profile {
