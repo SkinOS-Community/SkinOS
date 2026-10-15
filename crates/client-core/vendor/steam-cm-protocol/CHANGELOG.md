@@ -1,5 +1,19 @@
 # Changelog
 
+## SkinOS local changes - 2026-10-15
+
+These changes apply to the vendored SkinOS copy, not an upstream release. See
+[SKINOS-PATCHES.md](SKINOS-PATCHES.md) for provenance and the other local patches.
+
+### Added
+
+- `LaunchEntry.id` preserves the numeric PICS launch-option key. Parsed entries
+  are sorted by ID, retaining sparse option IDs rather than treating them as indices.
+- `AppCatalogInfo.cloud_config` and `ProtocolGame.cloud_config` preserve appinfo
+  `ufs` save rules and root overrides, with matching text/binary scalar normalization.
+- `pics::parse_app_info_kv` decodes already-fetched appinfo. Authentication and
+  requested-AppID validation remain the caller's responsibility.
+
 
 ## [v0.4.1] - 2026-06-09
 

@@ -72,11 +72,17 @@ fn resolve(request: &Value, home: &Path) -> Result<Vec<PathBuf>, String> {
         };
         let relative = relative_path(&expand_user_path(&path, request)?)?;
         let target = base.join(relative);
-        require_narrow_save_path(&target, &base, &home)?;
-        if !matches!(
+        let installation_root = matches!(
             root.to_ascii_lowercase().as_str(),
             "gameinstall" | "appinstalldir"
-        ) {
+        );
+        // Valve permits `.` when saves live directly in the game's install
+        // directory. That caller-verified installation is already game-scoped;
+        // the same spelling must never grant a whole user-data container.
+        if !installation_root || target != base {
+            require_narrow_save_path(&target, &base, &home)?;
+        }
+        if !installation_root {
             require_game_identity(&target, &home, request)?;
         }
         check_existing_components(&target)?;
@@ -260,6 +266,15 @@ fn root_base(root: &str, request: &Value, home: &Path) -> Result<Option<PathBuf>
                 .map_err(|_| "Cannot resolve the verified installation for Auto-Cloud")?;
             if !install.is_dir() {
                 return Err("Auto-Cloud installation root is not a directory".into());
+            }
+            if [
+                home.to_path_buf(),
+                home.join("Documents"),
+                home.join("Library/Application Support"),
+            ]
+            .contains(&install)
+            {
+                return Err("Auto-Cloud installation cannot be a whole user-data container".into());
             }
             Some(install)
         }
@@ -696,6 +711,32 @@ mod tests {
     }
 
     #[test]
+    fn install_root_saves_accept_dot_without_granting_user_containers() {
+        let f = Fixture::new();
+        for root in ["GameInstall", "AppInstallDir"] {
+            assert_eq!(
+                f.rule(root, ".").unwrap(),
+                vec![f.0.join("Installed Fixture")]
+            );
+            assert!(f.rule(root, "../escape").is_err());
+            for container in [
+                f.0.clone(),
+                f.0.join("Documents"),
+                f.0.join("Library/Application Support"),
+            ] {
+                let request = json!({
+                    "command":"launch", "install_dir":container,
+                    "cloud_config":{"savefiles":{"0":{"root":root,"path":".","pattern":"*.sav"}}}
+                });
+                assert!(resolve(&request, &f.0).is_err());
+            }
+        }
+        for root in ["MacHome", "MacDocuments", "MacAppSupport"] {
+            assert!(f.rule(root, ".").is_err());
+        }
+    }
+
+    #[test]
     fn sensitive_application_roots_are_not_granted_by_cloud_metadata() {
         let f = Fixture::new();
         for path in [
@@ -804,7 +845,7 @@ mod tests {
     }
 
     #[test]
-    fn game_install_rules_are_confined_to_specific_children() {
+    fn game_install_rules_are_confined_to_the_installation() {
         let f = Fixture::new();
         let install = f.0.join("Installed Game");
         fs::create_dir(&install).unwrap();
@@ -818,7 +859,7 @@ mod tests {
             resolve(&request("game/cfg"), &f.0).unwrap(),
             vec![install.join("game/cfg")]
         );
-        for path in [".", "../Documents", "/tmp/Game"] {
+        for path in ["../Documents", "/tmp/Game"] {
             assert!(resolve(&request(path), &f.0).is_err());
         }
         std::os::unix::fs::symlink(f.0.join("Documents"), install.join("game")).unwrap();

@@ -78,6 +78,21 @@ pub struct LaunchEntry {
     pub betakey: Option<String>,
 }
 
+impl From<steam_cm_protocol::LaunchEntry> for LaunchEntry {
+    fn from(entry: steam_cm_protocol::LaunchEntry) -> Self {
+        Self {
+            id: entry.id,
+            executable: entry.executable,
+            arguments: entry.arguments,
+            workingdir: entry.workingdir,
+            launch_type: entry.launch_type,
+            oslist: entry.oslist,
+            osarch: entry.osarch,
+            betakey: entry.betakey,
+        }
+    }
+}
+
 impl From<steam_cm_protocol::ProtocolGame> for Game {
     fn from(game: steam_cm_protocol::ProtocolGame) -> Self {
         let public_default = |entry: &&steam_cm_protocol::LaunchEntry| {
@@ -122,20 +137,7 @@ impl From<steam_cm_protocol::ProtocolGame> for Game {
                 "https://cdn.akamai.steamstatic.com/steam/apps/{}/header.jpg",
                 game.appid
             ),
-            launch: game
-                .launch
-                .into_iter()
-                .map(|entry| LaunchEntry {
-                    id: entry.id,
-                    executable: entry.executable,
-                    arguments: entry.arguments,
-                    workingdir: entry.workingdir,
-                    launch_type: entry.launch_type,
-                    oslist: entry.oslist,
-                    osarch: entry.osarch,
-                    betakey: entry.betakey,
-                })
-                .collect(),
+            launch: game.launch.into_iter().map(LaunchEntry::from).collect(),
             cloud_config: game.cloud_config,
             launch_metadata_known: true,
         }

@@ -7,6 +7,23 @@ Rust APIs for client-style Steam features — authentication, friends, chat, and
 without depending on the Steam client or Web API key. It was built for, and is used by,
 [Steamie](https://github.com/LargeModGames/steamie), but it is a standalone crate you can use on its own.
 
+## SkinOS vendored changes
+
+This copy includes local SkinOS patches; it is not an unmodified upstream release.
+[SKINOS-PATCHES.md](SKINOS-PATCHES.md) records the upstream revision and local changes.
+
+Launch metadata preserves each numeric `config/launch` key as `LaunchEntry.id` and
+sorts entries by that ID. IDs can be sparse and must not be replaced with vector indices.
+`AppCatalogInfo` and `ProtocolGame` also expose the appinfo `ufs` object as
+`cloud_config`, including numbered save rules and root overrides. Text and binary
+PICS parsing normalize scalar values to strings. This supplies metadata only;
+callers still validate paths and implement any Cloud synchronization separately.
+
+`pics::parse_app_info_kv` decodes already-fetched `KVValue` appinfo using the same
+launch and UFS rules as library loading. It does not fetch metadata or verify an
+account's entitlement; the caller must fetch through its authenticated connection
+and validate the requested AppID.
+
 ## Features
 
 - Steam authentication: QR, username/password (with Steam Guard), and refresh-token reuse.

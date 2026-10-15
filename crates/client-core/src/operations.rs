@@ -452,20 +452,29 @@ fn game_with_fresh_launch_metadata(
     refreshed.launch = metadata
         .launch
         .into_iter()
-        .map(|entry| crate::model::LaunchEntry {
-            id: entry.id,
-            executable: entry.executable,
-            arguments: entry.arguments,
-            workingdir: entry.workingdir,
-            launch_type: entry.launch_type,
-            oslist: entry.oslist,
-            osarch: entry.osarch,
-            betakey: entry.betakey,
-        })
+        .map(crate::model::LaunchEntry::from)
         .collect();
     refreshed.cloud_config = metadata.cloud_config;
     refreshed.launch_metadata_known = true;
     Ok(refreshed)
+}
+
+async fn game_for_launch<'a>(
+    game: &'a Game,
+    windows: bool,
+    metadata: impl std::future::Future<Output = Result<steam_cm_protocol::pics::AppCatalogInfo>>,
+) -> Result<std::borrow::Cow<'a, Game>> {
+    if windows {
+        return Ok(std::borrow::Cow::Borrowed(game));
+    }
+    // `known` distinguishes legacy caches from an explicitly empty UFS object;
+    // it does not prove that launch options or save paths survived a game update.
+    // Native launch already requires a live connection, so resolve its current
+    // PICS metadata each time before selecting an executable or save policy.
+    let metadata = metadata.await.context(
+        "Не удалось обновить данные запуска и сохранений. Обновите библиотеку и повторите запуск",
+    )?;
+    game_with_fresh_launch_metadata(game, metadata).map(std::borrow::Cow::Owned)
 }
 
 fn launch_arguments(
@@ -835,15 +844,13 @@ async fn launch(
         record.appid == game.appid,
         "Installed game identity mismatch"
     );
-    let refreshed;
-    let game = if !windows && !game.launch_metadata_known {
-        let metadata = skinos_downloader::application_metadata(&context.connection, game.appid)
-            .await.context("Не удалось обновить данные запуска и сохранений. Обновите библиотеку и повторите запуск")?;
-        refreshed = game_with_fresh_launch_metadata(game, metadata)?;
-        &refreshed
-    } else {
-        game
-    };
+    let game = game_for_launch(
+        game,
+        windows,
+        skinos_downloader::application_metadata(&context.connection, game.appid),
+    )
+    .await?;
+    let game = game.as_ref();
     let entry = launch_entry(game, destination, windows)?;
     let executable = relative_game_path(destination, &entry.executable)?;
     let working_dir = match entry.workingdir.as_deref().filter(|v| !v.is_empty()) {
@@ -1189,6 +1196,50 @@ mod tests {
                 .cloud_config
                 .is_some()
         );
+    }
+
+    #[tokio::test]
+    async fn known_native_cache_refreshes_changed_launch_and_cloud_but_windows_stays_cached() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("new-game"), b"fixture").unwrap();
+        let mut stale_entry = entry("old-game", "macos");
+        stale_entry.id = Some(2);
+        let mut cached = game(vec![stale_entry]);
+        cached.launch_metadata_known = true;
+        cached.cloud_config =
+            Some(json!({"savefiles":{"0":{"root":"MacDocuments","path":"OldGame"}}}));
+        let current_cloud = json!({"savefiles":{"0":{"root":"GameInstall","path":"saves"}}});
+        let refreshed = game_for_launch(&cached, false, async {
+            Ok(steam_cm_protocol::pics::AppCatalogInfo {
+                appid: cached.appid,
+                name: cached.name.clone(),
+                img_icon_url: None,
+                app_type: Some("game".into()),
+                installdir: cached.installdir.clone(),
+                launch: vec![steam_cm_protocol::LaunchEntry {
+                    id: Some(19),
+                    executable: "new-game".into(),
+                    oslist: Some("macos".into()),
+                    ..Default::default()
+                }],
+                cloud_config: Some(current_cloud.clone()),
+            })
+        })
+        .await
+        .unwrap();
+        let selected = launch_entry(refreshed.as_ref(), dir.path(), false).unwrap();
+        assert_eq!(selected.id, Some(19));
+        assert_eq!(selected.executable, "new-game");
+        assert_eq!(refreshed.cloud_config.as_ref(), Some(&current_cloud));
+
+        let windows = game_for_launch(&cached, true, async {
+            bail!("Windows metadata refresh must not be polled")
+        })
+        .await
+        .unwrap();
+        assert!(matches!(windows, std::borrow::Cow::Borrowed(_)));
+        assert_eq!(windows.launch[0].id, Some(2));
+        assert_eq!(windows.cloud_config, cached.cloud_config);
     }
     #[test]
     fn detects_actual_installed_platform_and_ignores_beta_tools() {

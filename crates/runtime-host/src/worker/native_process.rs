@@ -380,16 +380,23 @@ mod tests {
 
         struct Fixture {
             root: PathBuf,
-            spawned: Option<Instant>,
+            spawned: bool,
         }
         impl Drop for Fixture {
             fn drop(&mut self) {
-                // The fixture exits itself after one second. Never signal a
-                // process from this test, including on an assertion failure.
-                if let Some(spawned) = self.spawned {
-                    std::thread::sleep(
-                        Duration::from_millis(1200).saturating_sub(spawned.elapsed()),
-                    );
+                if self.spawned {
+                    // Release only this fixture through its private marker;
+                    // never signal a PID after a failed assertion.
+                    let _ = std::fs::write(self.root.join("release"), b"done");
+                    let deadline = Instant::now() + Duration::from_secs(5);
+                    while !self.root.join("finished").exists() {
+                        if Instant::now() > deadline {
+                            // The child has its own watchdog. Keep its files
+                            // intact rather than unlinking a running fixture.
+                            return;
+                        }
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
                 }
                 let _ = std::fs::remove_dir_all(&self.root);
             }
@@ -403,29 +410,68 @@ mod tests {
                 "skinos-script-group-{}-{nonce}",
                 std::process::id()
             )),
-            spawned: None,
+            spawned: false,
         };
         let install = fixture.root.join("install");
         let state = fixture.root.join("private-state");
         std::fs::create_dir_all(&install).unwrap();
         std::fs::create_dir(&state).unwrap();
         let game = install.join("game");
-        std::fs::copy("/bin/sleep", &game).unwrap();
+        let source = fixture.root.join("game.c");
+        // Use our own Mach-O, not an Apple platform binary whose environment
+        // inspection can differ under SIP between macOS versions.
+        std::fs::write(
+            &source,
+            r#"
+#include <fcntl.h>
+#include <unistd.h>
+static int mark(const char *path) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (fd < 0) return 1;
+    return close(fd) != 0;
+}
+int main(int argc, char **argv) {
+    if (argc != 4 || mark(argv[1])) return 10;
+    for (int i = 0; i < 3000; ++i) {
+        if (access(argv[2], F_OK) == 0) return mark(argv[3]);
+        usleep(10000);
+    }
+    mark(argv[3]);
+    return 11;
+}
+"#,
+        )
+        .unwrap();
+        assert!(
+            Command::new("/usr/bin/clang")
+                .args(["-Wall", "-Wextra", "-Werror"])
+                .arg(&source)
+                .arg("-o")
+                .arg(&game)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let ready = fixture.root.join("ready");
+        let release = fixture.root.join("release");
+        let finished = fixture.root.join("finished");
         let script = install.join("launch.sh");
         let pid_file = fixture.root.join("fixture.pid");
         std::fs::write(
             &script,
-            b"#!/bin/sh\n\"$1\" 1 &\nprintf '%s\\n' \"$!\" > \"$2\"\n",
+            b"#!/bin/sh\n\"$1\" \"$2\" \"$3\" \"$4\" &\nprintf '%s\\n' \"$!\" > \"$5\"\n",
         )
         .unwrap();
         let spawned_after = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_micros();
-        fixture.spawned = Some(Instant::now());
         let mut launcher = Command::new("/bin/sh")
             .arg(&script)
             .arg(&game)
+            .arg(&ready)
+            .arg(&release)
+            .arg(&finished)
             .arg(&pid_file)
             .env("SteamAppId", "424242")
             .env("SKINOS_RUNTIME_STATE_ROOT", &state)
@@ -435,6 +481,7 @@ mod tests {
             .process_group(0)
             .spawn()
             .unwrap();
+        fixture.spawned = true;
         let launcher_pid = launcher.id() as i32;
         assert!(launcher.wait().unwrap().success());
         let game_pid: i32 = std::fs::read_to_string(&pid_file)
@@ -442,6 +489,14 @@ mod tests {
             .trim()
             .parse()
             .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !ready.exists() {
+            assert!(
+                Instant::now() < deadline,
+                "native fixture did not enter main"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
         let tracker = ScriptTracker::capture(
             launcher_pid,
             launcher_pid,
@@ -455,10 +510,20 @@ mod tests {
             tracker.launcher.is_none(),
             "launcher must be reaped before this check"
         );
-        let selected = tracker
-            .find_game()
-            .unwrap()
-            .expect("background fixture must remain identifiable after shell exit");
+        // Reproduce a scheduling delay longer than the old fixture's lifetime.
+        // Readiness and lifetime now have explicit handshakes, not a 1s race.
+        std::thread::sleep(Duration::from_millis(1300));
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let selected = loop {
+            if let Some(process) = tracker.find_game().unwrap() {
+                break process;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "background fixture must remain identifiable after shell exit"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        };
         assert_eq!(selected.pid, game_pid);
         assert_eq!(
             selected.executable.canonicalize().unwrap(),
