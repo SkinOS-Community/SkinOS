@@ -1,6 +1,6 @@
 //! Interoperable Steam library discovery and atomic appmanifest updates.
 mod uninstall;
-use crate::{InstalledDepot, InstalledGame, safe_relative};
+use crate::{InstallPlatform, InstalledDepot, InstalledGame, safe_relative};
 use anyhow::{Context, Result, ensure};
 use keyvalues_parser::{Obj, Value, Vdf};
 use std::{
@@ -141,6 +141,11 @@ pub fn read_appmanifest(steamapps: &Path, appid: u32) -> Result<InstalledGame> {
         steamid: text(obj, "LastOwner").unwrap_or_default().into(),
         install_dir,
         build_id: text(obj, "buildid").unwrap_or("0").into(),
+        platform: match text(obj, "SkinOSInstallPlatform") {
+            Some("macos") => Some(InstallPlatform::Macos),
+            Some("windows") => Some(InstallPlatform::Windows),
+            _ => None,
+        },
         depots,
     })
 }
@@ -210,6 +215,9 @@ pub(crate) fn write_appmanifest(
     ] {
         set_text(obj, key, val);
     }
+    if let Some(platform) = record.platform {
+        set_text(obj, "SkinOSInstallPlatform", platform.os());
+    }
     let mut depots = Obj::new();
     for depot in &record.depots {
         let mut entry = Obj::new();
@@ -259,11 +267,17 @@ mod tests {
         std::fs::write(manifest_path(dir.path(), 42), old).unwrap();
         let mut record = read_appmanifest(dir.path(), 42).unwrap();
         assert_eq!(record.depots[0].manifest_id, "11");
+        assert_eq!(record.platform, None);
         record.build_id = "2".into();
+        record.platform = Some(InstallPlatform::Windows);
         write_appmanifest(dir.path(), &record, "Game", Some(old), 10, 4, &[(43, 10)]).unwrap();
         let updated = std::fs::read_to_string(manifest_path(dir.path(), 42)).unwrap();
         assert!(updated.contains("russian"));
         assert_eq!(read_appmanifest(dir.path(), 42).unwrap().build_id, "2");
+        assert_eq!(
+            read_appmanifest(dir.path(), 42).unwrap().platform,
+            Some(InstallPlatform::Windows)
+        );
         assert!(write_appmanifest(dir.path(), &record, "Game", Some(old), 10, 4, &[]).is_err());
         assert_eq!(
             std::fs::read_dir(dir.path().join("skinos-backups"))

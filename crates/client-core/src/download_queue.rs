@@ -3,7 +3,7 @@ use crate::model::{Event, Request};
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use skinos_downloader::{InstallControl, InstallInterrupted};
+use skinos_downloader::{InstallControl, InstallInterrupted, InstallPlatform};
 use std::{
     collections::HashMap, future::Future, path::PathBuf, pin::Pin, sync::Arc, time::Duration,
 };
@@ -18,10 +18,11 @@ pub struct DownloadJob {
     pub steamid: String,
     pub appid: u32,
     pub is_update: bool,
+    pub platform: Option<InstallPlatform>,
     pub request_id: Option<String>,
 }
 pub trait DownloadExecutor: Send + Sync + 'static {
-    fn validate(&self, job: &DownloadJob) -> Result<()>;
+    fn validate(&self, job: &DownloadJob) -> Result<InstallPlatform>;
     fn can_start(&self, job: &DownloadJob) -> bool;
     fn resource_key(&self, job: &DownloadJob) -> Result<String>;
     fn run(
@@ -68,6 +69,7 @@ pub struct DownloadItem {
     pub state: DownloadState,
     pub queue_position: usize,
     pub is_update: bool,
+    pub platform: Option<InstallPlatform>,
     pub progress: Option<f64>,
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
@@ -97,6 +99,7 @@ impl DownloadItem {
             state,
             queue_position: 0,
             is_update,
+            platform: None,
             progress: None,
             downloaded_bytes: 0,
             total_bytes: 0,
@@ -122,6 +125,7 @@ impl DownloadItem {
             steamid: steamid.into(),
             appid: self.appid,
             is_update: self.is_update,
+            platform: self.platform,
             request_id: self.request_id.clone(),
         }
     }
@@ -191,6 +195,8 @@ impl DownloadItem {
 struct Intent {
     appid: u32,
     is_update: bool,
+    #[serde(default)]
+    platform: Option<InstallPlatform>,
     state: DownloadState,
     #[serde(default)]
     downloaded_bytes: u64,
@@ -376,6 +382,16 @@ impl Actor {
                     intent.state
                 };
                 let mut row = DownloadItem::new(intent.appid, intent.is_update, state);
+                row.platform = intent.platform;
+                // Old queues did not record a platform. Resolve once using game
+                // evidence/defaults, never compatibility preferences, and keep
+                // interrupted jobs paused until the user resumes them.
+                if row.platform.is_none() {
+                    match actor.executor.validate(&row.job(&actor.steamid)) {
+                        Ok(platform) => row.platform = Some(platform),
+                        Err(error) => row.error = Some(error.to_string()),
+                    }
+                }
                 row.downloaded_bytes = intent.downloaded_bytes;
                 row.total_bytes = intent.total_bytes;
                 if row.total_bytes > 0 {
@@ -427,6 +443,7 @@ impl Actor {
                 .map(|row| Intent {
                     appid: row.appid,
                     is_update: row.is_update,
+                    platform: row.platform,
                     state: row.state,
                     downloaded_bytes: row.downloaded_bytes,
                     total_bytes: row.total_bytes,
@@ -570,7 +587,15 @@ impl Actor {
                     DownloadState::Queued,
                 );
                 row.request_id = Some(request.id.clone());
-                self.executor.validate(&row.job(&self.steamid))?;
+                row.platform = request
+                    .payload
+                    .get("platform")
+                    .map(|value| {
+                        serde_json::from_value(value.clone())
+                            .context("Версия игры должна быть macos или windows")
+                    })
+                    .transpose()?;
+                row.platform = Some(self.executor.validate(&row.job(&self.steamid))?);
                 if let Some(index) = position {
                     self.items.remove(index);
                 }
@@ -579,7 +604,7 @@ impl Actor {
                 let _ = self.events.send(Event::new(
                     Some(&request.id),
                     "download_enqueued",
-                    json!({"appid":appid,"queue_id":format!("{}-{appid}",self.steamid)}),
+                    json!({"appid":appid,"queue_id":format!("{}-{appid}",self.steamid),"platform":self.items.last().and_then(|row| row.platform)}),
                 ));
             }
             "pause_download" | "cancel_download" => {
@@ -629,8 +654,10 @@ impl Actor {
                     ),
                     "Эта загрузка уже выполняется или ожидает запуска"
                 );
-                self.executor
-                    .validate(&self.items[index].job(&self.steamid))?;
+                self.items[index].platform = Some(
+                    self.executor
+                        .validate(&self.items[index].job(&self.steamid))?,
+                );
                 self.items[index].state = DownloadState::Queued;
                 self.items[index].error = None;
                 self.items[index].message = Some("Ожидание запуска".into());
@@ -935,9 +962,9 @@ mod tests {
         resources: HashMap<u32, String>,
     }
     impl DownloadExecutor for Mock {
-        fn validate(&self, job: &DownloadJob) -> Result<()> {
+        fn validate(&self, job: &DownloadJob) -> Result<InstallPlatform> {
             ensure!(job.steamid == self.account, "wrong account");
-            Ok(())
+            Ok(job.platform.unwrap_or(InstallPlatform::Macos))
         }
         fn can_start(&self, _: &DownloadJob) -> bool {
             true
@@ -1292,6 +1319,7 @@ mod tests {
                 Intent {
                     appid: 1,
                     is_update: false,
+                    platform: None,
                     state: DownloadState::Cancelling,
                     downloaded_bytes: 12,
                     total_bytes: 50,
@@ -1300,6 +1328,7 @@ mod tests {
                 Intent {
                     appid: 2,
                     is_update: false,
+                    platform: None,
                     state: DownloadState::Pausing,
                     downloaded_bytes: 20,
                     total_bytes: 70,
@@ -1314,6 +1343,76 @@ mod tests {
         assert_eq!(actor.items[0].state, DownloadState::Cancelled);
         assert_eq!(actor.items[1].state, DownloadState::Paused);
         assert_eq!(actor.items[0].downloaded_bytes, 12);
+    }
+    #[test]
+    fn explicit_platform_survives_queue_restart_and_resume() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("queue.json");
+        let (executor, _) = mock(ACCOUNT, HashMap::new());
+        let (tx, _) = mpsc::unbounded_channel();
+        let mut actor =
+            Actor::load(ACCOUNT.into(), path.clone(), executor.clone(), tx.clone()).unwrap();
+        actor
+            .apply(&request(
+                "enqueue",
+                "install_game",
+                json!({"appid":1,"platform":"windows"}),
+            ))
+            .unwrap();
+        assert_eq!(actor.items[0].platform, Some(InstallPlatform::Windows));
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved["items"][0]["platform"], "windows");
+        drop(actor);
+        // The executor's automatic default is macOS. A restart/resume must
+        // retain the explicit Windows selection rather than recompute it.
+        let mut actor = Actor::load(ACCOUNT.into(), path, executor, tx).unwrap();
+        assert_eq!(actor.items[0].state, DownloadState::Paused);
+        assert_eq!(actor.items[0].platform, Some(InstallPlatform::Windows));
+        actor
+            .apply(&request(
+                "resume",
+                "resume_download",
+                json!({"appid":1,"platform":"macos"}),
+            ))
+            .unwrap();
+        let job = actor.items[0].job(ACCOUNT);
+        assert_eq!(job.platform, Some(InstallPlatform::Windows));
+        assert_eq!(actor.items[0].state, DownloadState::Queued);
+    }
+    #[test]
+    fn legacy_queue_freezes_default_while_paused_and_invalid_platform_cannot_enqueue() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("queue.json");
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&json!({
+                "steamid": ACCOUNT, "max_concurrent": 2, "revision": 1,
+                "items": [{"appid":1,"is_update":false,"state":"downloading"}]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let (executor, _) = mock(ACCOUNT, HashMap::new());
+        let (tx, _) = mpsc::unbounded_channel();
+        let mut actor = Actor::load(ACCOUNT.into(), path.clone(), executor, tx).unwrap();
+        assert_eq!(actor.items[0].state, DownloadState::Paused);
+        assert_eq!(actor.items[0].platform, Some(InstallPlatform::Macos));
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(saved["items"][0]["platform"], "macos");
+        for invalid in [json!("linux"), json!("unknown"), json!(null), json!(42)] {
+            assert!(
+                actor
+                    .apply(&request(
+                        "invalid",
+                        "install_game",
+                        json!({"appid":2,"platform":invalid})
+                    ))
+                    .is_err()
+            );
+            assert_eq!(actor.items.len(), 1);
+        }
     }
     #[test]
     fn failed_persistence_rolls_back_enqueue_resume_reorder_and_limit() {
@@ -1422,8 +1521,8 @@ mod tests {
             active: Arc<AtomicUsize>,
         }
         impl DownloadExecutor for DrainExecutor {
-            fn validate(&self, _: &DownloadJob) -> Result<()> {
-                Ok(())
+            fn validate(&self, job: &DownloadJob) -> Result<InstallPlatform> {
+                Ok(job.platform.unwrap_or(InstallPlatform::Macos))
             }
             fn can_start(&self, _: &DownloadJob) -> bool {
                 true

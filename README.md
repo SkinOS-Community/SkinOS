@@ -15,6 +15,8 @@ as a game launcher.
 - Steam sign-in and saved accounts, library search, filters and favorites.
 - Parallel game downloads and updates, pause/resume, cancellation and queue
   ordering, with transfer speed, progress and estimated time remaining.
+- Explicit macOS/Windows selection before downloading, with macOS preselected
+  when available. The chosen version is retained across pauses and updates.
 - Searchable Steam download regions with preferred servers and fallbacks.
 - Native macOS games and Windows games through pinned NotProton integration
   with a separately installed CrossOver or CrossOver Preview.

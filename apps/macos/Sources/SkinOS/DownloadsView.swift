@@ -148,6 +148,10 @@ struct DownloadMeter: View {
     let download: GameDownload
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let platform = download.platform {
+                Label(platform.downloadLabel, systemImage: platform.symbol)
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
+            }
             HStack {
                 Text(download.failed ? "Ошибка загрузки" : download.complete ? "Готово" : download.phaseDescription).lineLimit(2)
                 Spacer()

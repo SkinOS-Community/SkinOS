@@ -8,6 +8,7 @@ extension GameDownload {
         phase = state
         queuePosition = max(0, json["queue_position"] as? Int ?? 0)
         isUpdate = json["is_update"] as? Bool ?? false
+        platform = (json["platform"] as? String).flatMap(InstallPlatform.init(rawValue:))
         progress = (json["progress"] as? NSNumber)?.doubleValue
         downloadedBytes = max(0, (json["downloaded_bytes"] as? NSNumber)?.int64Value ?? 0)
         totalBytes = max(0, (json["total_bytes"] as? NSNumber)?.int64Value ?? 0)
@@ -42,6 +43,7 @@ extension AppModel {
         downloadQueueRevision = -1; downloadQueueError = nil; pendingDownloadControls = []; pendingEnqueueGames = []
         downloadControlRequests = [:]; downloadQueueRequests = []; downloadLimitRequests = []; downloadLimitPending = false
         maxConcurrentDownloads = 2
+        installationRequest = nil
     }
 
     func refreshDownloadQueue() {

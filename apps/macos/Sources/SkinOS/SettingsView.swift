@@ -128,7 +128,8 @@ struct GameSettingsView: View {
     @State private var draft = GameSettings()
 
     private var windowsSelected: Bool {
-        draft.compatibility == "notproton" || (draft.compatibility == "auto" && (!game.supportsMacOS || game.installedPlatform == "windows"))
+        if let installed = game.installedVersion { return installed == .windows }
+        return game.supportsWindows
     }
 
     var body: some View {
@@ -148,14 +149,13 @@ struct GameSettingsView: View {
                     SettingsCard(title: "Запуск", symbol: "play.circle") {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
-                                Text("Версия игры").font(.system(size: 12))
+                                Text(game.isInstalled ? "Установленная версия" : "Версия игры").font(.system(size: 12))
                                 Spacer()
-                                Picker("Версия игры", selection: $draft.compatibility) {
-                                    Text("Автоматически").tag("auto")
-                                    if game.supportsMacOS { Text("Нативная macOS").tag("native") }
-                                    if game.supportsWindows || game.installedPlatform == "windows" { Text("Windows · NotProton").tag("notproton") }
-                                }.labelsHidden().frame(width: 225)
+                                Text(game.installedVersion?.downloadLabel ?? (game.isInstalled ? "Определяется по файлам игры" : "Выбирается при установке"))
+                                    .font(.system(size: 12)).foregroundStyle(Theme.muted)
                             }
+                            Text(game.isInstalled ? "Обновления сохраняют установленную версию. Чтобы выбрать другую платформу, удалите игру и установите её заново." : "При установке можно выбрать macOS или Windows, если у игры есть обе версии.")
+                                .font(.system(size: 10)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                             VStack(alignment: .leading, spacing: 9) {
                                 Text("Параметры запуска").font(.system(size: 12))
                                 TextField("Например: -windowed", text: $draft.launchArguments)
