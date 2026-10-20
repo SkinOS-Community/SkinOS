@@ -154,7 +154,7 @@ struct AppUpdateSettingsView: View {
         SettingsCard(title: "Обновления SkinOS", symbol: "arrow.triangle.2.circlepath") {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Версия \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
+                    Text("Версия \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "не определена")")
                         .font(.system(size: 12, weight: .medium))
                     Spacer()
                     Button("Проверить обновления…") { updates.checkForUpdates() }
@@ -164,7 +164,7 @@ struct AppUpdateSettingsView: View {
                     get: { updates.automaticallyChecksForUpdates }, set: updates.setAutomaticChecks))
                     .toggleStyle(.switch).controlSize(.small).font(.system(size: 12))
                     .disabled(!updates.isConfigured)
-                Text("Обновления загружаются с GitHub и проверяются по цифровой подписи. Установка — с вашим подтверждением, когда игры и загрузки не выполняются.")
+                Text("Обновления загружаются с GitHub и проверяются по цифровой подписи. Установка требует вашего подтверждения и доступна, когда игры и загрузки не выполняются.")
                     .font(.system(size: 11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 if let date = updates.lastUpdateCheckDate {
                     Text("Последняя проверка: \(date.formatted(date: .abbreviated, time: .shortened))")

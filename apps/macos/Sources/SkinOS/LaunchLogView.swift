@@ -104,7 +104,7 @@ struct LaunchLogView: View {
                 }.background(Theme.sidebar)
             } else {
                 EmptyState(symbol: "doc.text.magnifyingglass", title: "Журнал пока пуст",
-                           subtitle: "Запустите игру — здесь появятся этапы запуска и подробности ошибок.")
+                           subtitle: "После запуска здесь появятся его этапы и подробности ошибок.")
             }
             Rectangle().fill(Theme.divider).frame(height: 1)
             HStack(spacing: 13) {

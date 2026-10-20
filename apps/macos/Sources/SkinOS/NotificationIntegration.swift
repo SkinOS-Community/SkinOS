@@ -4,6 +4,10 @@ import Foundation
 @MainActor
 extension AppModel {
     var unreadNoticeCount: Int { noticeItems.filter { !$0.read }.count }
+    var noticesFeedState: FeedLoadState {
+        FeedLoadState(hasItems: !noticeItems.isEmpty, loaded: noticesLoaded,
+                      loading: noticesLoading, hasError: noticesError != nil)
+    }
 
     var mainContentVisible: Bool {
         applicationIsActive && applicationWindowVisible && !isShowingLogin && gameForSettings == nil && gameForLog == nil
@@ -85,16 +89,19 @@ extension AppModel {
 
     func refreshNotices() {
         guard account != nil, !noticesLoading else { return }
-        noticesLoading = true; noticesError = nil
+        noticesLoading = true
         if let id = send("get_notifications") { notificationRequests.insert(id) }
-        else { noticesLoading = false }
+        else {
+            noticesLoading = false
+            noticesError = "Нет соединения с SkinOS Core. Перезапустите приложение."
+        }
     }
 
     func receiveNotificationEvent(_ event: String, payload: [String: Any], requestID: String?) -> Bool {
         if event == "steam_notifications_status" {
             guard payload["steamid"] as? String == account?.id, account != nil else { return true }
             switch payload["state"] as? String {
-            case "ready": noticesError = nil
+            case "ready": break // Service availability does not refresh the displayed snapshot.
             case "unavailable", "degraded":
                 noticesError = payload["message"] as? String ?? payload["error"] as? String ?? "Уведомления Steam временно недоступны."
             default: break
@@ -104,7 +111,9 @@ extension AppModel {
         if event == "error" {
             let notificationError = ["notifications_failed", "notifications_storage_failed", "notifications_busy"]
                 .contains(payload["code"] as? String ?? "")
+            if let owner = payload["steamid"] as? String, owner != account?.id { return notificationError }
             let matchingRequest = requestID.map { notificationRequests.remove($0) != nil } ?? false
+            if notificationError, requestID != nil, !matchingRequest { return true }
             if notificationError || matchingRequest {
                 noticesLoading = false
                 noticesError = payload["message"] as? String ?? "Не удалось загрузить уведомления Steam."
@@ -114,16 +123,22 @@ extension AppModel {
         guard event == "steam_notifications" || event == "steam_notification" else { return false }
         guard let owner = payload["steamid"] as? String, owner == account?.id else { return true }
         if event == "steam_notifications" {
+            if let requestID { notificationRequests.remove(requestID) }
+            noticesLoading = false
+            guard let rows = payload["notifications"] as? [[String: Any]] else {
+                noticesError = "Получен некорректный список уведомлений. Обновите его."
+                return true
+            }
+            let notices = rows.compactMap { makeSteamNotice($0, owner: owner) }
+            guard notices.count == rows.count, Set(notices.map(\.id)).count == notices.count else {
+                noticesError = "Получен некорректный список уведомлений. Обновите его."
+                return true
+            }
             // The backend snapshot is authoritative, including withdrawn requests.
             // Local game/download events have a separate lifetime in this feed.
             noticeItems.removeAll { $0.kind == .message || $0.kind == .steam }
-            for row in payload["notifications"] as? [[String: Any]] ?? [] {
-                if let notice = makeSteamNotice(row, owner: owner) {
-                    mergeNotice(notice)
-                }
-            }
-            noticesLoading = false; noticesError = nil
-            if let requestID { notificationRequests.remove(requestID) }
+            for notice in notices { mergeNotice(notice) }
+            noticesLoaded = true; noticesError = nil
         } else if let row = payload["notification"] as? [String: Any], let notice = makeSteamNotice(row, owner: owner) {
             mergeNotice(notice)
             let fresh = notifications.record(notice)
@@ -165,7 +180,7 @@ extension AppModel {
         guard let account, let attempt = launchNotificationIDs[appID] else { return }
         let name = games.first { $0.id == appID }?.name ?? "Игра \(appID)"
         let notice = ClientNotice(id: "launch-\(attempt)-failed", owner: account.id, kind: .game,
-            title: "\(name) — не удалось запустить", body: "Откройте журнал запуска в карточке игры, чтобы посмотреть подробности.",
+            title: "Не удалось запустить: \(name)", body: "Откройте журнал запуска в карточке игры, чтобы посмотреть подробности.",
             target: .game(appID), timestamp: Date())
         mergeNotice(notice); notifications.post(notice)
     }
@@ -176,7 +191,7 @@ extension AppModel {
             guard let old = previous[item.id], old.isActive, old.phase != item.phase else { continue }
             let name = games.first { $0.id == item.id }?.name ?? "Игра \(item.id)"
             let notice = ClientNotice(id: "download-\(item.id)-\(revision)", owner: account.id, kind: .download,
-                title: item.complete ? "\(name) — \(item.isUpdate ? "обновление готово" : "установка завершена")" : "\(name) — загрузка прервана",
+                title: item.complete ? "\(item.isUpdate ? "Обновление готово" : "Установка завершена"): \(name)" : "Загрузка прервана: \(name)",
                 body: item.complete ? "Можно запускать игру из библиотеки SkinOS." : "Откройте загрузки, чтобы посмотреть причину и повторить попытку.",
                 target: .download(item.id), timestamp: Date())
             mergeNotice(notice); notifications.post(notice)

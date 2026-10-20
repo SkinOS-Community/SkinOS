@@ -1,5 +1,17 @@
 import Foundation
 
+enum FeedLoadState: Equatable {
+    case initial, loading, failed, empty, content, refreshing, stale
+
+    init(hasItems: Bool, loaded: Bool, loading: Bool, hasError: Bool) {
+        if hasItems {
+            self = loading ? .refreshing : hasError ? .stale : .content
+        } else {
+            self = loading ? .loading : hasError ? .failed : loaded ? .empty : .initial
+        }
+    }
+}
+
 extension GameDownload {
     init?(queueJSON json: [String: Any]) {
         guard let appID = json["appid"] as? Int, let state = json["state"] as? String,
@@ -29,6 +41,11 @@ extension GameDownload {
 
 @MainActor
 extension AppModel {
+    var downloadFeedState: FeedLoadState {
+        FeedLoadState(hasItems: !downloads.isEmpty, loaded: downloadQueueReady,
+                      loading: downloadQueueLoading, hasError: downloadQueueError != nil)
+    }
+
     var orderedDownloads: [GameDownload] {
         let known = downloadOrder.compactMap { downloads[$0] }
         let knownIDs = Set(downloadOrder)
@@ -48,14 +65,16 @@ extension AppModel {
 
     func refreshDownloadQueue() {
         guard account != nil, !downloadQueueLoading else { return }
-        downloadQueueLoading = true; downloadQueueError = nil
+        downloadQueueLoading = true
         if let id = send("get_download_queue") { downloadQueueRequests.insert(id) }
-        else { downloadQueueLoading = false }
+        else {
+            downloadQueueLoading = false
+            downloadQueueError = "Нет соединения с SkinOS Core. Перезапустите приложение."
+        }
     }
 
     func controlDownload(_ command: String, appID: Int) {
         guard account != nil, coreReady, !pendingDownloadControls.contains(appID) else { return }
-        downloadQueueError = nil
         if let id = send(command, payload: ["appid": appID]) {
             downloadControlRequests[id] = appID; pendingDownloadControls.insert(appID)
         }
@@ -68,7 +87,6 @@ extension AppModel {
 
     func moveDownload(_ appID: Int, to position: Int) {
         guard canReorderDownload(appID), downloadOrder.indices.contains(position) else { return }
-        downloadQueueError = nil
         if let id = send("move_download", payload: ["appid": appID, "position": position]) {
             downloadControlRequests[id] = appID; pendingDownloadControls.insert(appID)
         }
@@ -82,7 +100,6 @@ extension AppModel {
 
     func setDownloadLimit(_ limit: Int) {
         guard account != nil, coreReady, (1...4).contains(limit), !downloadLimitPending, limit != maxConcurrentDownloads else { return }
-        downloadQueueError = nil
         if let id = send("set_download_limit", payload: ["limit": limit]) {
             downloadLimitRequests.insert(id); downloadLimitPending = true
         }
@@ -90,22 +107,29 @@ extension AppModel {
 
     func receiveDownloadQueue(_ event: String, payload: [String: Any], requestID: String?) -> Bool {
         if event == "download_queue" {
-            guard let account, payload["steamid"] as? String == account.id,
-                  let revision = (payload["revision"] as? NSNumber)?.int64Value else { return true }
+            guard let account, payload["steamid"] as? String == account.id else { return true }
+            let refreshing = requestID.map { downloadQueueRequests.contains($0) } ?? false
             acknowledgeDownloadRequest(requestID)
-            guard revision > downloadQueueRevision else { return true }
-            guard let rows = payload["items"] as? [[String: Any]] else { return true }
+            guard let revision = (payload["revision"] as? NSNumber)?.int64Value,
+                  revision >= 0, let rows = payload["items"] as? [[String: Any]] else {
+                downloadQueueError = "Получена некорректная очередь загрузок. Обновите её."
+                return true
+            }
+            guard revision >= downloadQueueRevision else { return true }
             let items = rows.compactMap(GameDownload.init(queueJSON:))
             guard items.count == rows.count, Set(items.map(\.id)).count == items.count else {
                 downloadQueueError = "Получена некорректная очередь загрузок. Обновите её."
                 return true
             }
+            if refreshing { downloadQueueError = nil }
+            guard revision > downloadQueueRevision else { return true }
             notifyDownloadTransitions(previous: downloads, items: items, revision: revision)
             downloads = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
             downloadOrder = items.map(\.id)
             maxConcurrentDownloads = min(4, max(1, payload["max_concurrent"] as? Int ?? 2))
             downloadQueueRevision = revision
             downloadQueueReady = true; downloadQueueLoading = false
+            downloadQueueError = nil
             return true
         }
         if event == "download_enqueued" {

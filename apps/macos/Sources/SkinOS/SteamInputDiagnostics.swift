@@ -197,7 +197,7 @@ extension AppModel {
                   let owner = account?.id, payload["steamid"] as? String == owner else { return true }
             switch payload["state"] as? String {
             case "failed":
-                steamInputFeedbackErrors[appID] = "Вибрация недоступна. Подробности — в журнале запуска."
+                steamInputFeedbackErrors[appID] = "Вибрация недоступна. Подробности смотрите в журнале запуска."
             case "ready", "reconnected":
                 steamInputFeedbackErrors[appID] = nil
             default: break
@@ -262,7 +262,7 @@ extension AppModel {
                 if state == "failed" {
                     steamInputErrors[appID] = payload["message"] as? String ?? "Проверка Steam Input завершилась с ошибкой."
                 } else {
-                    let labels = ["authenticating": "Подключаем аккаунт…", "authenticated": "Аккаунт подключён", "starting": "Сканируем контроллеры — около 7 секунд…", "exited": "Завершаем проверку…"]
+                    let labels = ["authenticating": "Подключаем аккаунт…", "authenticated": "Аккаунт подключён", "starting": "Сканируем контроллеры, около 7 секунд…", "exited": "Завершаем проверку…"]
                     steamInputMessages[appID] = labels[state] ?? payload["message"] as? String ?? "Проверяем Steam Input…"
                 }
             }
@@ -320,7 +320,7 @@ struct SteamInputDiagnosticCard: View {
                 if let report {
                     Divider().overlay(Theme.divider)
                     if report.fixture {
-                        Label("Тестовый отчёт — физическое устройство не проверялось", systemImage: "info.circle")
+                        Label("Тестовый отчёт: физическое устройство не проверялось", systemImage: "info.circle")
                             .font(.system(size: 11)).foregroundStyle(.orange)
                     }
                     diagnosticRow("Steam Input API", result: report.apiInitialized ? "Инициализирован" : "Не инициализирован")

@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
     var launchNotificationIDs: [Int: String] = [:]
     @Published var noticeItems: [ClientNotice] = []
     @Published var noticesLoading = false
+    @Published var noticesLoaded = false
     @Published var noticesError: String?
     var notificationRequests: Set<String> = []
     var locallyReadNoticeIDs: Set<String> = []
@@ -191,6 +192,14 @@ final class AppModel: ObservableObject {
             self.loadingUninstallPlans = []
             self.uninstallPlanRequests = [:]
             self.downloadQueueLoading = false
+            self.noticesLoading = false
+            self.notificationRequests = []
+            self.downloadQueueRequests = []
+            self.downloadLimitRequests = []
+            if self.account != nil {
+                self.noticesError = "Соединение с SkinOS Core прервано. Перезапустите приложение."
+                self.downloadQueueError = "Нет соединения с SkinOS Core. Перезапустите приложение."
+            }
             self.pendingDownloadControls = []
             self.pendingEnqueueGames = []
             self.downloadLimitPending = false

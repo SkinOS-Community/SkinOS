@@ -102,7 +102,7 @@ extension AppModel {
         if !preserveNotificationRoute { notificationRouteWaiting = nil }
         notifications.deactivate()
         launchNotificationIDs = [:]
-        noticeItems = []; noticesLoading = false; noticesError = nil
+        noticeItems = []; noticesLoading = false; noticesLoaded = false; noticesError = nil
         notificationRequests = []; locallyReadNoticeIDs = []
         resetDownloadQueue()
         uninstallingGames = []; uninstallRequests = [:]; uninstallNotices = [:]

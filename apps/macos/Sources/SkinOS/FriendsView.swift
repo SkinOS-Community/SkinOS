@@ -73,7 +73,7 @@ struct FriendsView: View {
                 if let friend = model.selectedFriend {
                     ChatView(model: model, friend: friend).id(friend.id)
                 } else {
-                    EmptyState(symbol: "bubble.left.and.bubble.right", title: "Всегда на связи", subtitle: "Выберите друга, чтобы открыть переписку.\nПри входе ваш статус — «Невидимка».")
+                    EmptyState(symbol: "bubble.left.and.bubble.right", title: "Выберите чат", subtitle: "Выберите друга, чтобы открыть переписку.\nПри входе установлен статус «Невидимка».")
                 }
             }
             .onAppear {
@@ -161,7 +161,7 @@ struct ChatView: View {
                     }.buttonStyle(AccentButtonStyle()).disabled(!canSend).help("Отправить сообщение")
                 }
                 if draft.utf8.count > 6_000 { Text("Сообщение слишком длинное").font(.system(size: 10)).foregroundStyle(.orange) }
-                else { Text("Enter — отправить · Shift+Enter — новая строка").font(.system(size: 9)).foregroundStyle(Theme.muted) }
+                else { Text("Enter: отправить · Shift+Enter: новая строка").font(.system(size: 9)).foregroundStyle(Theme.muted) }
             }.padding(22)
         }
     }

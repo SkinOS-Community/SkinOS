@@ -68,14 +68,42 @@ struct NotificationsView: View {
                 Button { model.refreshNotices() } label: { Image(systemName: "arrow.clockwise") }
                     .disabled(model.account == nil || model.noticesLoading || !model.coreReady).help("Обновить уведомления Steam")
             }.buttonStyle(.bordered)
-            if let error = model.noticesError { Text(error).font(.system(size: 12)).foregroundStyle(.orange) }
+            if let error = model.noticesError {
+                VStack(alignment: .leading, spacing: 9) {
+                    Label("Не удалось обновить уведомления Steam", systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(.orange)
+                    if !model.noticeItems.isEmpty {
+                        Text("Показаны сохранённые уведомления и локальные события. Новые уведомления Steam могут отсутствовать.")
+                            .font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    }
+                    DisclosureGroup("Технические подробности") {
+                        Text(error).font(.system(size: 11)).foregroundStyle(Theme.muted)
+                            .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 5)
+                    }.font(.system(size: 11))
+                    Button("Повторить") { model.refreshNotices() }
+                        .buttonStyle(.bordered).disabled(model.account == nil || model.noticesLoading || !model.coreReady)
+                }.padding(13).background(Color.orange.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
+            }
             if model.account == nil { WelcomeView(model: model) }
-            else if model.noticesLoading && model.noticeItems.isEmpty { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
-            else if model.noticeItems.isEmpty {
+            else if model.noticesFeedState == .loading {
+                ProgressView("Загружаем уведомления…").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.noticesFeedState == .failed {
+                EmptyState(symbol: "bell.slash", title: "Уведомления недоступны",
+                           subtitle: "Не удалось проверить новые события Steam. Повторите запрос.")
+            } else if model.noticesFeedState == .initial {
+                EmptyState(symbol: "bell", title: "Уведомления ещё не загружены",
+                           subtitle: "Нажмите кнопку обновления, чтобы получить события Steam.")
+            } else if model.noticesFeedState == .empty {
                 EmptyState(symbol: "bell", title: "Пока ничего нового", subtitle: "Здесь появятся уведомления Steam и сообщения о завершении загрузок.")
             } else {
                 ScrollView {
                     LazyVStack(spacing: 10) {
+                        if model.noticesFeedState == .refreshing {
+                            ProgressView("Обновляем уведомления. Показаны последние полученные данные.")
+                                .controlSize(.small).font(.system(size: 11))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         ForEach(model.noticeItems) { notice in
                             Button { model.openNotice(notice) } label: {
                                 HStack(alignment: .top, spacing: 15) {

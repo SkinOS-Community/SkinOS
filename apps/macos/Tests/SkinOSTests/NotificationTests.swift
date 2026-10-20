@@ -83,7 +83,8 @@ struct NotificationTests {
         #expect(model.noticesError == "Service unavailable")
         #expect(model.noticeItems.map(\.id) == ["existing"])
         model.receive(["event": "steam_notifications_status", "payload": ["steamid": "100", "state": "ready"]])
-        #expect(model.noticesError == nil)
+        #expect(model.noticesError == "Service unavailable")
+        #expect(model.noticesFeedState == .stale)
         model.notificationRequests.insert("manual-refresh")
         model.noticesLoading = true
         model.receive(["id": "manual-refresh", "event": "error", "payload": ["code": "notifications_failed", "message": "Manual request timed out"]])
@@ -222,5 +223,80 @@ struct NotificationTests {
         model.receive(snapshot(3, "completed"))
         #expect(deliveries.notices.count == 1)
         #expect(deliveries.notices.first?.kind == .download)
+    }
+
+    @Test func initialNotificationFailureRequiresSuccessfulSnapshotBeforeEmptyState() {
+        let (model, _) = fixture()
+        model.commandSink = { _, _ in "refresh" }
+        #expect(model.noticesFeedState == .initial)
+        model.refreshNotices()
+        #expect(model.noticesFeedState == .loading)
+        model.receive(["event": "error", "id": "refresh",
+                       "payload": ["code": "notifications_failed", "message": "Fixture failure"]])
+        #expect(model.noticesFeedState == .failed)
+        #expect(!model.noticesLoaded)
+        model.receive(["event": "steam_notifications_status", "payload": ["steamid": "100", "state": "ready"]])
+        #expect(model.noticesFeedState == .failed)
+        model.refreshNotices()
+        #expect(model.noticesFeedState == .loading)
+        #expect(model.noticesError != nil)
+        model.receive(["event": "steam_notifications", "id": "refresh",
+                       "payload": ["steamid": "100", "notifications": []]])
+        #expect(model.noticesFeedState == .empty)
+        #expect(model.noticesLoaded)
+        #expect(model.noticesError == nil)
+        #expect(model.notificationRequests.isEmpty)
+    }
+
+    @Test func notificationRefreshFailurePreservesDataUntilSuccessfulReplacement() {
+        let (model, _) = fixture()
+        model.receive(["event": "steam_notifications", "payload": ["steamid": "100", "notifications": [row("old")]]])
+        model.commandSink = { _, _ in "refresh" }
+        model.refreshNotices()
+        #expect(model.noticesFeedState == .refreshing)
+        model.receive(["event": "error", "id": "refresh",
+                       "payload": ["code": "notifications_failed", "message": "Fixture timeout"]])
+        #expect(model.noticesFeedState == .stale)
+        #expect(model.noticeItems.map(\.id) == ["old"])
+        model.refreshNotices()
+        #expect(model.noticesFeedState == .refreshing)
+        #expect(model.noticesError != nil)
+        model.receive(["event": "steam_notifications", "id": "refresh",
+                       "payload": ["steamid": "100", "notifications": [row("new")]]])
+        #expect(model.noticesFeedState == .content)
+        #expect(model.noticeItems.map(\.id) == ["new"])
+        #expect(model.noticesError == nil)
+    }
+
+    @Test func malformedNotificationSnapshotPreservesExistingEvents() {
+        let invalidSnapshots: [Any] = ["invalid", [row("duplicate"), row("duplicate")], [["id": "missing-title"]]]
+        for notifications in invalidSnapshots {
+            let (model, _) = fixture()
+            model.receive(["event": "steam_notifications", "payload": ["steamid": "100", "notifications": [row("old")]]])
+            model.commandSink = { _, _ in "refresh" }
+            model.refreshNotices()
+            model.receive(["event": "steam_notifications", "id": "refresh",
+                           "payload": ["steamid": "100", "notifications": notifications]])
+            #expect(model.noticesFeedState == .stale)
+            #expect(model.noticeItems.map(\.id) == ["old"])
+            #expect(!model.noticesLoading)
+            #expect(model.notificationRequests.isEmpty)
+        }
+    }
+
+    @Test func failedNotificationSendAndAccountResetNeverProduceSuccessfulEmptyState() {
+        let (model, _) = fixture()
+        model.commandSink = { _, _ in nil }
+        model.refreshNotices()
+        #expect(model.noticesFeedState == .failed)
+        #expect(!model.noticesLoaded)
+        model.receive(["event": "steam_notifications", "payload": ["steamid": "100", "notifications": []]])
+        #expect(model.noticesFeedState == .empty)
+        model.resetCommunity()
+        #expect(!model.noticesLoaded)
+        #expect(model.noticesFeedState == .initial)
+        model.receive(["event": "error", "id": "old-request",
+                       "payload": ["code": "notifications_failed", "message": "Old account request"]])
+        #expect(model.noticesError == nil)
     }
 }
