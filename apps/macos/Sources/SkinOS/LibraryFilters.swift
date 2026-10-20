@@ -8,11 +8,17 @@ struct LibraryFilters: View {
             HStack(spacing: 6) {
                 ForEach(GameFilter.allCases) { filter in
                     Button { model.filter = filter } label: {
-                        Text(filter.rawValue).font(.system(size: 11, weight: .medium))
-                            .padding(.horizontal, 12).padding(.vertical, 8)
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark").font(.system(size: 9, weight: .bold))
+                                .opacity(model.filter == filter ? 1 : 0)
+                                .accessibilityHidden(true)
+                            Text(filter.rawValue).font(.system(size: 11, weight: .medium))
+                        }.padding(.horizontal, 12).padding(.vertical, 8)
                             .foregroundStyle(model.filter == filter ? .white : Theme.muted)
                             .background(model.filter == filter ? Theme.elevated : .clear, in: Capsule())
                     }.buttonStyle(.plain)
+                        .accessibilityLabel(filter.rawValue)
+                        .accessibilityAddTraits(model.filter == filter ? .isSelected : [])
                 }
                 Spacer(minLength: 0)
                 Text("\(model.filteredGames.count)").font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.muted)

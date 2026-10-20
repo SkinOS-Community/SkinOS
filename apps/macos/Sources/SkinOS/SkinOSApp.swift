@@ -166,8 +166,10 @@ struct SidebarView: View {
             ForEach(AppSection.allCases) { section in
                 Button { model.section = section } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: section.symbol).font(.system(size: 15, weight: .medium)).frame(width: 20)
-                        Text(section.rawValue).font(.system(size: 13, weight: .medium))
+                        Image(systemName: model.section == section ? "checkmark" : section.symbol)
+                            .font(.system(size: 15, weight: .medium)).frame(width: 20)
+                            .accessibilityHidden(true)
+                        Text(section.rawValue).font(.system(size: 13, weight: .medium)).lineLimit(1)
                         Spacer()
                         if section == .library, !model.games.isEmpty {
                             Text("\(model.games.count)").font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -183,7 +185,9 @@ struct SidebarView: View {
                     .padding(.horizontal, 13).padding(.vertical, 13)
                     .background(model.section == section ? Theme.accent.opacity(0.085) : .clear, in: RoundedRectangle(cornerRadius: 9))
                     .contentShape(Rectangle())
-                }.buttonStyle(.plain).padding(.horizontal, 12).padding(.bottom, 4)
+                }.buttonStyle(.plain)
+                    .accessibilityAddTraits(model.section == section ? .isSelected : [])
+                    .padding(.horizontal, 12).padding(.bottom, 4)
             }
 
             Spacer(minLength: 30)
@@ -194,7 +198,7 @@ struct SidebarView: View {
                         .font(.system(size: 8, weight: .semibold, design: .monospaced)).tracking(1.1)
                 }.foregroundStyle(Theme.muted)
                 Text("Нативный клиент для Mac")
-                    .font(.system(size: 10)).foregroundStyle(Theme.muted.opacity(0.65))
+                    .font(.system(size: 10)).foregroundStyle(Theme.muted)
             }.padding(25)
             Rectangle().fill(Theme.divider).frame(height: 1)
             Button { model.account == nil ? (model.isShowingLogin = true) : (model.section = .account) } label: {
@@ -248,7 +252,7 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 9) {
-                        Text("Всё, во что хочется играть.")
+                        Text("Библиотека")
                             .font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.8)
                         Text(subtitle).font(.system(size: 12)).foregroundStyle(Theme.muted)
                     }
@@ -288,8 +292,8 @@ struct LibraryView: View {
     }
 
     var subtitle: String {
-        guard model.account != nil else { return "Ваша библиотека Steam в собственном пространстве." }
-        return model.libraryIsCached ? "Сохранённая библиотека · обновите, чтобы получить последние данные." : "Ваша коллекция. Без лишнего."
+        guard model.account != nil else { return "Подключите аккаунт Steam, чтобы загрузить список игр." }
+        return model.libraryIsCached ? "Сохранённая библиотека · обновите, чтобы получить последние данные." : "Игры текущего аккаунта Steam."
     }
 }
 
@@ -304,7 +308,7 @@ struct WelcomeView: View {
                 RoundedRectangle(cornerRadius: 22).fill(Theme.surface).frame(width: 90, height: 90).rotationEffect(.degrees(-8))
                 Image(systemName: "gamecontroller.fill").font(.system(size: 35)).foregroundStyle(Theme.accent)
             }.padding(.bottom, 14)
-            Text("Добро пожаловать домой.").font(.system(size: 24, weight: .semibold, design: .rounded)).tracking(-0.5)
+            Text("Подключение Steam").font(.system(size: 24, weight: .semibold, design: .rounded)).tracking(-0.5)
             Text("Подключите Steam, чтобы увидеть свои игры,\nустанавливать их и запускать прямо отсюда.")
                 .font(.system(size: 13)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).lineSpacing(5).padding(.top, 13)
             if model.isAuthenticating || model.isReconnecting {
@@ -324,7 +328,7 @@ struct WelcomeView: View {
                 }.buttonStyle(AccentButtonStyle()).disabled(!model.coreReady).padding(.top, 28)
             }
             Text(model.isAuthenticating ? model.authMessage : "Вход через Steam Guard · пароль не нужен")
-                .font(.system(size: 10)).foregroundStyle(Theme.muted.opacity(0.7)).padding(.top, 16)
+                .font(.system(size: 10)).foregroundStyle(Theme.muted).padding(.top, 16)
             Spacer()
             HStack(spacing: 28) {
                 Label("Нативный интерфейс", systemImage: "apple.logo")
@@ -466,7 +470,7 @@ struct GameDetailView: View {
                 }
                 Rectangle().fill(Theme.divider).frame(height: 1)
                 VStack(alignment: .leading, spacing: 18) {
-                    DetailValue(title: "АККАУНТ ДЛЯ ИГРЫ", value: model.account?.displayName ?? "—", symbol: "person.crop.circle")
+                    DetailValue(title: "АККАУНТ ДЛЯ ИГРЫ", value: model.account?.displayName ?? "не выбран", symbol: "person.crop.circle")
                     DetailValue(title: "ВРЕМЯ В ИГРЕ", value: game.playtime, symbol: "clock")
                     DetailValue(title: "СОСТОЯНИЕ", value: game.isInstalled ? "Установлена" : "В вашей библиотеке", symbol: game.isInstalled ? "internaldrive" : "checkmark.seal")
                 }
@@ -501,7 +505,7 @@ struct AccountView: View {
     @ObservedObject var model: AppModel
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            Text("Ваш Steam. Ваше пространство.").font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.8)
+            Text("Аккаунты Steam").font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.8)
             if let account = model.account {
                 HStack(spacing: 20) {
                     AvatarView(account: account, size: 70)
@@ -543,7 +547,7 @@ struct LoginView: View {
                 Button { password = ""; guardCode = ""; model.cancelAuth() } label: { Image(systemName: "xmark").font(.system(size: 12)) }.buttonStyle(.plain)
             }
             VStack(spacing: 10) {
-                Text("Все ваши игры — здесь.").font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.7)
+                Text("Вход в Steam").font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.7)
                 Text("Войдите в аккаунт, которому принадлежат игры.").font(.system(size: 12)).foregroundStyle(Theme.muted)
             }
             Picker("Способ входа", selection: $mode) {

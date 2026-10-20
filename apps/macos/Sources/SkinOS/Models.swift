@@ -109,7 +109,7 @@ struct GameDownload: Identifiable {
         return phase == "queued" ? "Размер будет определён при подготовке" : "Определяем размер загрузки…"
     }
     var speedDescription: String {
-        guard bytesPerSecond > 0, bytesPerSecond.isFinite else { return "— МБ/с" }
+        guard bytesPerSecond > 0, bytesPerSecond.isFinite else { return "Скорость пока неизвестна" }
         return "\(Self.bytes(Int64(min(bytesPerSecond, Double(Int64.max - 1024)))))/с"
     }
     var etaDescription: String {

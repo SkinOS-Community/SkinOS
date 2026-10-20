@@ -10,7 +10,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("Настроено под вас.")
+                    Text("Настройки")
                         .font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.8)
                     Text("Библиотека, загрузки и запуск Windows-игр на Mac.")
                         .font(.system(size: 12)).foregroundStyle(Theme.muted)

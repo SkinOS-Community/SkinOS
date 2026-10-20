@@ -144,4 +144,90 @@ struct DownloadQueueTests {
         #expect(!cancelling.canCancel)
         #expect(!cancelling.canPause)
     }
+
+    @Test func initialFailureAndSuccessfulEmptyQueueAreDifferentStates() {
+        let model = model()
+        model.commandSink = { _, _ in "refresh" }
+        #expect(model.downloadFeedState == .initial)
+        model.refreshDownloadQueue()
+        #expect(model.downloadFeedState == .loading)
+        model.receive(["event": "error", "id": "refresh",
+                       "payload": ["code": "download_queue_failed", "message": "Fixture request failure"]])
+        #expect(model.downloadFeedState == .failed)
+        #expect(!model.downloadQueueReady)
+        #expect(model.downloadQueueRequests.isEmpty)
+        model.refreshDownloadQueue()
+        #expect(model.downloadFeedState == .loading)
+        #expect(model.downloadQueueError != nil)
+        model.receive(queue(1, [], requestID: "refresh"))
+        #expect(model.downloadFeedState == .empty)
+        #expect(model.downloadQueueError == nil)
+        #expect(model.downloadQueueReady)
+    }
+
+    @Test func failedRefreshKeepsRowsAndEqualRevisionSuccessClearsStaleness() {
+        let model = model()
+        model.commandSink = { _, _ in "refresh" }
+        model.receive(queue(10, [item(42, "paused")]))
+        model.refreshDownloadQueue()
+        #expect(model.downloadFeedState == .refreshing)
+        model.receive(["event": "error", "id": "refresh", "payload": ["message": "Fixture timeout"]])
+        #expect(model.downloadFeedState == .stale)
+        #expect(model.downloads[42]?.phase == "paused")
+        model.refreshDownloadQueue()
+        #expect(model.downloadFeedState == .refreshing)
+        #expect(model.downloadQueueError != nil)
+        model.receive(queue(10, [item(42, "paused")], requestID: "refresh"))
+        #expect(model.downloadFeedState == .content)
+        #expect(model.downloadQueueError == nil)
+        #expect(model.downloadQueueRevision == 10)
+        #expect(model.downloads[42]?.phase == "paused")
+    }
+
+    @Test func malformedQueueCannotEraseCachedRowsOrCompleteFirstLoad() {
+        let invalidPayloads: [[String: Any]] = [
+            ["steamid": "100", "revision": 2],
+            ["steamid": "100", "items": []],
+            ["steamid": "100", "revision": 2, "items": [["appid": 42, "state": "unknown"]]],
+            ["steamid": "100", "revision": 2, "items": [item(42, "paused"), item(42, "queued")]]
+        ]
+        for populated in [false, true] {
+            for payload in invalidPayloads {
+                let model = model()
+                if populated { model.receive(queue(1, [item(42, "paused")])) }
+                model.commandSink = { _, _ in "refresh" }
+                model.refreshDownloadQueue()
+                model.receive(["event": "download_queue", "id": "refresh", "payload": payload])
+                #expect(model.downloadFeedState == (populated ? .stale : .failed))
+                #expect(model.downloadQueueRequests.isEmpty)
+                #expect(model.downloads[42]?.phase == (populated ? "paused" : nil))
+                #expect(model.downloadQueueReady == populated)
+            }
+        }
+    }
+
+    @Test func staleSnapshotAndStartingControlDoNotHideRefreshFailure() {
+        let model = model()
+        model.coreReady = true
+        model.receive(queue(10, [item(42, "paused")]))
+        model.downloadQueueError = "Fixture refresh failure"
+        model.commandSink = { command, _ in command }
+        model.controlDownload("resume_download", appID: 42)
+        #expect(model.downloadFeedState == .stale)
+        model.refreshDownloadQueue()
+        model.receive(queue(9, [item(42, "downloading")], requestID: "get_download_queue"))
+        #expect(model.downloadFeedState == .stale)
+        #expect(model.downloads[42]?.phase == "paused")
+        #expect(model.downloadQueueError != nil)
+    }
+
+    @Test func failedQueueSendDoesNotLookLikeSuccessfulEmptyLoad() {
+        let model = model()
+        model.commandSink = { _, _ in nil }
+        model.refreshDownloadQueue()
+        #expect(model.downloadFeedState == .failed)
+        #expect(model.downloadQueueRequests.isEmpty)
+        #expect(!model.downloadQueueLoading)
+        #expect(!model.downloadQueueReady)
+    }
 }

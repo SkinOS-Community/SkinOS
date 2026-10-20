@@ -6,7 +6,7 @@ struct DownloadsView: View {
         VStack(alignment: .leading, spacing: 23) {
             HStack(alignment: .top, spacing: 25) {
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("Загрузки под контролем.").font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.8)
+                    Text("Загрузки").font(.system(size: 27, weight: .bold, design: .rounded)).tracking(-0.8)
                     Text(model.activeDownloads == 0 ? "Устанавливайте и обновляйте игры из вашей библиотеки." : "\(model.runningDownloadCount) в работе · \(model.queuedDownloads.count) в очереди · \(model.downloadSpeed)")
                         .font(.system(size: 12)).foregroundStyle(Theme.muted).monospacedDigit()
                 }
@@ -30,18 +30,29 @@ struct DownloadsView: View {
                 if let notice = model.updatesNotice { Text(notice).font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(2) }
             }
             if let error = model.downloadQueueError {
-                HStack {
-                    Text(error).font(.system(size: 12)).foregroundStyle(.orange).textSelection(.enabled)
-                    Spacer()
-                    Button { model.downloadQueueError = nil } label: { Image(systemName: "xmark") }.buttonStyle(.plain)
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Не удалось получить или изменить очередь", systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(.orange)
+                    if !model.downloads.isEmpty {
+                        Text("Показана последняя полученная очередь. Она может быть устаревшей.")
+                            .font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    }
+                    DownloadFailureDetails(failure: DownloadFailurePresentation(error))
+                    Button("Повторить запрос очереди") { model.refreshDownloadQueue() }
+                        .buttonStyle(.bordered).disabled(model.account == nil || model.downloadQueueLoading || !model.coreReady)
                 }.padding(13).background(Color.orange.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
             }
             if model.account == nil { WelcomeView(model: model) }
-            else if model.downloadQueueLoading && model.downloads.isEmpty {
+            else if model.downloadFeedState == .loading {
                 ProgressView("Загружаем очередь…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 13) {
+                        if model.downloadFeedState == .refreshing {
+                            ProgressView("Обновляем очередь. Показаны последние полученные данные.")
+                                .controlSize(.small).font(.system(size: 11))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         ForEach(model.games.filter { $0.updateAvailable && model.downloads[$0.id]?.isActive != true }) { game in
                             HStack {
                                 Label(game.name, systemImage: "arrow.down.circle").font(.system(size: 12, weight: .medium))
@@ -52,8 +63,18 @@ struct DownloadsView: View {
                         ForEach(model.orderedDownloads) { download in
                             DownloadRow(model: model, download: download)
                         }
-                        if model.downloads.isEmpty {
-                            EmptyState(symbol: "arrow.down.to.line", title: "Всё скачано", subtitle: "Выберите игру в библиотеке и нажмите «Установить».").frame(height: 300)
+                        if model.downloadFeedState == .empty {
+                            EmptyState(symbol: "arrow.down.to.line", title: "Очередь пуста", subtitle: "Выберите игру в библиотеке и нажмите «Установить».").frame(height: 300)
+                        } else if model.downloadFeedState == .failed {
+                            EmptyState(symbol: "exclamationmark.circle",
+                                       title: "Очередь недоступна", subtitle: "Не удалось проверить текущие загрузки. Повторите запрос очереди.").frame(height: 220)
+                        } else if model.downloadFeedState == .initial {
+                            VStack(spacing: 12) {
+                                EmptyState(symbol: "arrow.down.circle", title: "Очередь ещё не загружена",
+                                           subtitle: "Обновите очередь, чтобы увидеть текущие загрузки.").frame(height: 200)
+                                Button("Загрузить очередь") { model.refreshDownloadQueue() }
+                                    .buttonStyle(.bordered).disabled(!model.coreReady)
+                            }
                         }
                     }.padding(.bottom, 10)
                 }.scrollIndicators(.hidden)
@@ -132,6 +153,9 @@ struct DownloadControls: View {
                     .help("Отменить загрузку").accessibilityLabel("Отменить загрузку")
             }
             if download.canRetry {
+                if download.failed, DownloadFailurePresentation(download.message).action == .inspectAccount {
+                    Button("Проверить аккаунт") { model.section = .account }
+                }
                 Button { model.controlDownload("resume_download", appID: download.id) } label: { Label("Повторить", systemImage: "arrow.clockwise") }
             }
             Menu {
@@ -186,13 +210,33 @@ struct DownloadMeter: View {
             } else if download.totalBytes > 0 || download.installTotalBytes > 0 {
                 Text(download.byteDescription).font(.system(size: 10)).foregroundStyle(Theme.muted)
             }
-            if let message = download.message, !message.isEmpty {
-                Text(message).font(.system(size: 10)).foregroundStyle(download.failed ? .orange : Theme.muted)
+            if download.failed {
+                DownloadFailureDetails(failure: DownloadFailurePresentation(download.message))
+            } else if let message = download.message, !message.isEmpty {
+                Text(message).font(.system(size: 10)).foregroundStyle(Theme.muted)
                     .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
             if download.reusedBytes > 0, !download.failed {
                 Text("Использовано с диска: \(GameDownload.bytes(download.reusedBytes))")
                     .font(.system(size: 9)).foregroundStyle(Theme.muted)
+            }
+        }
+    }
+}
+
+private struct DownloadFailureDetails: View {
+    let failure: DownloadFailurePresentation
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(failure.title).font(.system(size: 11, weight: .medium)).foregroundStyle(.orange)
+            Text(failure.guidance).font(.system(size: 11)).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            if let diagnostic = failure.diagnostic {
+                DisclosureGroup("Технические подробности") {
+                    Text(diagnostic).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.muted)
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 5)
+                }.font(.system(size: 11))
             }
         }
     }
